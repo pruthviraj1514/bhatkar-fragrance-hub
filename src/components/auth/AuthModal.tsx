@@ -14,7 +14,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [loginData, setLoginData] = useState({
@@ -73,7 +73,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         throw new Error("Password must be at least 6 characters");
       }
 
-      await login({
+      if (!signupData.name.trim()) {
+        throw new Error("Name is required");
+      }
+
+      // Split name into firstname and lastname
+      const nameParts = signupData.name.trim().split(" ");
+      const firstname = nameParts[0];
+      const lastname = nameParts.slice(1).join(" ") || firstname;
+
+      await signup({
+        firstname,
+        lastname,
         email: signupData.email,
         password: signupData.password,
       });

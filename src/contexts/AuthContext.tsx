@@ -1,105 +1,64 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
+import api from "@/lib/axios";
 
-export interface User {
-  id: string;
+interface User {
+  firstname: string;
+  lastname: string;
   email: string;
-  name: string;
-  phone?: string;
-  address?: string;
 }
 
-interface LoginCredentials {
+interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+interface SignupPayload {
+  firstname: string;
+  lastname: string;
   email: string;
   password: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
+  token: string | null;
   isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  getToken: () => string | null;
+  login: (data: LoginPayload) => Promise<void>;
+  signup: (data: SignupPayload) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
-  // Initialize from localStorage
-  useEffect(() => {
-    const storedToken = localStorage.getItem("auth_token");
-    const storedUser = localStorage.getItem("auth_user");
+  // ✅ derived auth state
+  const isAuthenticated = !!user;
 
-    if (storedToken && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Failed to load user from storage:", error);
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_user");
-      }
-    }
-    setIsLoading(false);
-  }, []);
+  // 🔐 LOGIN
+  const login = async (data: LoginPayload) => {
+    const res = await api.post("/auth/signin", data);
+    const { token, firstname, lastname, email } = res.data.data;
 
-  const generateMockToken = () => {
-    return "mock_jwt_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("token", token);
+    setToken(token);
+    setUser({ firstname, lastname, email });
   };
 
-  const login = async (credentials: LoginCredentials) => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  // 📝 SIGNUP
+  const signup = async (data: SignupPayload) => {
+    const res = await api.post("/auth/signup", data);
+    const { token, firstname, lastname, email } = res.data.data;
 
-      if (!credentials.email.includes("@")) {
-        throw new Error("Invalid email format");
-      }
-
-      if (credentials.password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
-      }
-
-      const mockUser: User = {
-        id: "user_" + Math.random().toString(36).substr(2, 9),
-        email: credentials.email,
-        name: credentials.email.split("@")[0],
-        phone: "+91 98765 43210",
-      };
-
-      const token = generateMockToken();
-
-      localStorage.setItem("auth_token", token);
-      localStorage.setItem("auth_user", JSON.stringify(mockUser));
-
-      setUser(mockUser);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
-    setUser(null);
-  };
-
-  const getToken = () => {
-    return localStorage.getItem("auth_token");
+    localStorage.setItem("token", token);
+    setToken(token);
+    setUser({ firstname, lastname, email });
   };
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        getToken,
-      }}
+      value={{ user, token, isAuthenticated, login, signup }}
     >
       {children}
     </AuthContext.Provider>
@@ -107,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
   }
-  return context;
+  return ctx;
 }

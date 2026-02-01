@@ -8,7 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 export function ProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuth();
+
+  const { user } = useAuth(); // ❗ logout not yet in context
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -21,12 +22,20 @@ export function ProfileMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 🔐 TEMP LOGOUT (until we add it to AuthContext properly)
   const handleLogout = () => {
-    logout();
-    setIsOpen(false);
+    localStorage.removeItem("token");
+    window.location.reload(); // simple + safe for now
   };
 
   if (!user) return null;
+
+  // ✅ Safe initials
+  const initials =
+    (user.firstname?.charAt(0) ?? "") +
+    (user.lastname?.charAt(0) ?? "");
+
+  const fullName = `${user.firstname} ${user.lastname}`;
 
   return (
     <div ref={menuRef} className="relative">
@@ -38,7 +47,7 @@ export function ProfileMenu() {
         aria-label="Profile menu"
       >
         <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-          {user.name.charAt(0).toUpperCase()}
+          {initials.toUpperCase()}
         </div>
       </Button>
 
@@ -53,8 +62,12 @@ export function ProfileMenu() {
           >
             {/* User Info */}
             <div className="px-4 py-3 border-b border-border bg-muted/50">
-              <p className="text-sm font-semibold text-foreground">{user.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {fullName}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.email}
+              </p>
             </div>
 
             {/* Menu Items */}
