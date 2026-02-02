@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,12 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
+  const [isAdminMode, setIsAdminMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, signup } = useAuth();
+  const { login, adminLogin, signup } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [loginData, setLoginData] = useState({
@@ -49,9 +52,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true);
 
     try {
-      await login(loginData);
-      onClose();
-      setLoginData({ email: "", password: "" });
+      if (isAdminMode) {
+        await adminLogin(loginData);
+        onClose();
+        setLoginData({ email: "", password: "" });
+        // Redirect admin to home page
+        navigate("/");
+      } else {
+        await login(loginData);
+        onClose();
+        setLoginData({ email: "", password: "" });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -112,7 +123,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h2 className="text-xl font-bold">
-              {isLogin ? "Log In" : "Sign Up"}
+              {isAdminMode ? "Admin Log In" : (isLogin ? "Log In" : "Sign Up")}
             </h2>
             <button
               onClick={onClose}
@@ -121,6 +132,23 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          {/* Admin Mode Toggle */}
+          {isLogin && (
+            <div className="px-6 pt-4 pb-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdminMode(!isAdminMode);
+                  setError("");
+                  setLoginData({ email: "", password: "" });
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                {isAdminMode ? "Switch to Customer Login" : "Admin Login?"}
+              </button>
+            </div>
+          )}
 
           {/* Content */}
           <div className="p-6 max-h-96 overflow-y-auto">

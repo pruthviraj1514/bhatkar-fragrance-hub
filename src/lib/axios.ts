@@ -1,10 +1,33 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://psychic-lamp-r49rp79474pr2xjq5-3000.app.github.dev/api",
+  baseURL: "http://localhost:3000/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// Add request interceptor to include Bearer token
+api.interceptors.request.use(
+  (config) => {
+    // Don't add token to public endpoints (signin, signup)
+    const publicEndpoints = ["/auth/signin", "/auth/signup"];
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
+    
+    if (!isPublicEndpoint) {
+      // Check for admin token first, then user token
+      const token = localStorage.getItem("adminToken") || localStorage.getItem("token");
+      
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

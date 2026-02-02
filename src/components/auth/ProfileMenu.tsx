@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, LogOut, FileText } from "lucide-react";
+import { User, LogOut, FileText, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,7 +9,7 @@ export function ProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useAuth(); // ❗ logout not yet in context
+  const { user, isAdmin, admin } = useAuth(); // ❗ logout not yet in context
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -25,17 +25,31 @@ export function ProfileMenu() {
   // 🔐 TEMP LOGOUT (until we add it to AuthContext properly)
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    localStorage.removeItem("admin");
     window.location.reload(); // simple + safe for now
   };
 
-  if (!user) return null;
+  if (!user && !admin) return null;
 
   // ✅ Safe initials
-  const initials =
-    (user.firstname?.charAt(0) ?? "") +
-    (user.lastname?.charAt(0) ?? "");
+  let initials = "";
+  let fullName = "";
+  let displayEmail = "";
 
-  const fullName = `${user.firstname} ${user.lastname}`;
+  if (isAdmin && admin) {
+    initials = "A";
+    fullName = "Admin";
+    displayEmail = admin.email;
+  } else if (user) {
+    initials =
+      (user.firstname?.charAt(0) ?? "") +
+      (user.lastname?.charAt(0) ?? "");
+    fullName = `${user.firstname} ${user.lastname}`;
+    displayEmail = user.email;
+  }
 
   return (
     <div ref={menuRef} className="relative">
@@ -46,7 +60,9 @@ export function ProfileMenu() {
         className="relative"
         aria-label="Profile menu"
       >
-        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+        <div className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${
+          isAdmin ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground"
+        }`}>
           {initials.toUpperCase()}
         </div>
       </Button>
@@ -61,42 +77,70 @@ export function ProfileMenu() {
             className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-xl z-50"
           >
             {/* User Info */}
-            <div className="px-4 py-3 border-b border-border bg-muted/50">
+            <div className={`px-4 py-3 border-b border-border ${
+              isAdmin ? "bg-amber-500/10" : "bg-muted/50"
+            }`}>
               <p className="text-sm font-semibold text-foreground">
                 {fullName}
+                {isAdmin && <span className="ml-2 text-xs px-2 py-0.5 bg-amber-500 text-white rounded-full">Admin</span>}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {user.email}
+                {displayEmail}
               </p>
             </div>
 
             {/* Menu Items */}
             <div className="py-2">
-              <Link
-                to="/account"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-              >
-                <User className="h-4 w-4" />
-                Account Details
-              </Link>
+              {isAdmin ? (
+                // Admin Menu
+                <>
+                  <Link
+                    to="/admin/manage/product"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage Contents
+                  </Link>
 
-              <Link
-                to="/orders"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-              >
-                <FileText className="h-4 w-4" />
-                My Orders
-              </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors border-t border-border mt-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                // Customer Menu
+                <>
+                  <Link
+                    to="/account"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <User className="h-4 w-4" />
+                    Account Details
+                  </Link>
 
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors border-t border-border mt-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
+                  <Link
+                    to="/orders"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <FileText className="h-4 w-4" />
+                    My Orders
+                  </Link>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors border-t border-border mt-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         )}

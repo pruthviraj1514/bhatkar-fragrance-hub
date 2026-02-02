@@ -6,17 +6,25 @@ const {
     DB_HOST,
     DB_USER,
     DB_PASS,
+    DB_PASSWORD,
     DB_NAME,
+    DB_PORT,
     JWT_SECRET_KEY
 } = process.env;
 
 const requiredCredentials = [
     'DB_HOST',
     'DB_USER',
-    'DB_PASS',
     'DB_NAME',
     'JWT_SECRET_KEY'
 ];
+
+// DB_PASS and DB_PASSWORD are optional (one should be provided)
+const dbPassword = DB_PASSWORD || DB_PASS;
+if (!dbPassword) {
+    logger.error('Missing required credential: DB_PASSWORD or DB_PASS');
+    process.exit(1);
+}
 
 for (const credential of requiredCredentials) {
     if (process.env[credential] === undefined) {
@@ -28,7 +36,9 @@ for (const credential of requiredCredentials) {
 module.exports = {
     DB_HOST,
     DB_USER,
-    DB_PASS,
+    DB_PASS: dbPassword,
+    DB_PASSWORD: dbPassword,
     DB_NAME,
+    DB_PORT: DB_PORT || 3306,
     JWT_SECRET_KEY
 };

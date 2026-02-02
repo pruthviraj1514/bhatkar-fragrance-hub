@@ -22,7 +22,7 @@ export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { toggleCart, totalItems } = useCart();
   const { items: wishlistItems } = useWishlist();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const location = useLocation();
 
   return (
