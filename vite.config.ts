@@ -16,8 +16,6 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist",
     assetsDir: "assets",
     emptyOutDir: true,
-    // Ensure proper MIME types for CSS/JS
-    minify: "terser",
     sourcemap: false,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
