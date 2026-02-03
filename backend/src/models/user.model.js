@@ -10,41 +10,38 @@ class User {
         this.password = password;
     }
 
-    static create(newUser, cb) {
-        db.query(createNewUserQuery, 
-            [
-                newUser.firstname, 
-                newUser.lastname, 
-                newUser.email, 
-                newUser.password
-            ], (err, res) => {
-                if (err) {
-                    logger.error(err.message);
-                    cb(err, null);
-                    return;
-                }
-                cb(null, {
-                    id: res.insertId,
-                    firstname: newUser.firstname,
-                    lastname: newUser.lastname,
-                    email: newUser.email
-                });
-        });
+    static async create(newUser) {
+        try {
+            const result = await db.query(createNewUserQuery, 
+                [
+                    newUser.firstname, 
+                    newUser.lastname, 
+                    newUser.email, 
+                    newUser.password
+                ]);
+            return {
+                id: result[0].insertId,
+                firstname: newUser.firstname,
+                lastname: newUser.lastname,
+                email: newUser.email
+            };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
     }
 
-    static findByEmail(email, cb) {
-        db.query(findUserByEmailQuery, email, (err, res) => {
-            if (err) {
-                logger.error(err.message);
-                cb(err, null);
-                return;
+    static async findByEmail(email) {
+        try {
+            const [rows] = await db.query(findUserByEmailQuery, [email]);
+            if (rows.length) {
+                return rows[0];
             }
-            if (res.length) {
-                cb(null, res[0]);
-                return;
-            }
-            cb({ kind: "not_found" }, null);
-        })
+            throw { kind: "not_found" };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
     }
 }
 

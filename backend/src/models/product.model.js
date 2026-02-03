@@ -19,93 +19,89 @@ class Product {
         this.stock = stock;
     }
 
-    static create(newProduct, cb) {
-        db.query(createProductQuery, 
-            [
-                newProduct.name,
-                newProduct.brand,
-                newProduct.price,
-                newProduct.category,
-                newProduct.concentration,
-                newProduct.description,
-                newProduct.stock
-            ], (err, res) => {
-                if (err) {
-                    logger.error(err.message);
-                    cb(err, null);
-                    return;
-                }
-                cb(null, {
-                    id: res.insertId,
-                    ...newProduct
-                });
-        });
+    static async create(newProduct) {
+        try {
+            const result = await db.query(createProductQuery, 
+                [
+                    newProduct.name,
+                    newProduct.brand,
+                    newProduct.price,
+                    newProduct.category,
+                    newProduct.concentration,
+                    newProduct.description,
+                    newProduct.stock
+                ]);
+            return {
+                id: result[0].insertId,
+                ...newProduct
+            };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
     }
 
-    static getAll(cb) {
-        db.query(getAllProductsQuery, (err, res) => {
-            if (err) {
-                logger.error(err.message);
-                cb(err, null);
-                return;
+    static async getAll() {
+        try {
+            const [rows] = await db.query(getAllProductsQuery);
+            return rows;
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
+    }
+
+    static async getById(id) {
+        try {
+            const [rows] = await db.query(getProductByIdQuery, [id]);
+            if (rows.length) {
+                return rows[0];
             }
-            cb(null, res);
-        });
+            throw { kind: "not_found" };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
     }
 
-    static getById(id, cb) {
-        db.query(getProductByIdQuery, id, (err, res) => {
-            if (err) {
-                logger.error(err.message);
-                cb(err, null);
-                return;
+    static async update(id, updatedProduct) {
+        try {
+            const result = await db.query(updateProductQuery,
+                [
+                    updatedProduct.name,
+                    updatedProduct.brand,
+                    updatedProduct.price,
+                    updatedProduct.category,
+                    updatedProduct.concentration,
+                    updatedProduct.description,
+                    updatedProduct.stock,
+                    id
+                ]);
+            if (result[0].affectedRows === 0) {
+                throw { kind: "not_found" };
             }
-            if (res.length) {
-                cb(null, res[0]);
-                return;
+            return { id, ...updatedProduct };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
+    }
+
+    static async delete(id) {
+        try {
+            const result = await db.query(deleteProductQuery, [id]);
+            if (result[0].affectedRows === 0) {
+                throw { kind: "not_found" };
             }
-            cb({ kind: "not_found" }, null);
-        });
-    }
-
-    static update(id, updatedProduct, cb) {
-        db.query(updateProductQuery,
-            [
-                updatedProduct.name,
-                updatedProduct.brand,
-                updatedProduct.price,
-                updatedProduct.category,
-                updatedProduct.concentration,
-                updatedProduct.description,
-                updatedProduct.stock,
-                id
-            ], (err, res) => {
-                if (err) {
-                    logger.error(err.message);
-                    cb(err, null);
-                    return;
-                }
-                if (res.affectedRows === 0) {
-                    cb({ kind: "not_found" }, null);
-                    return;
-                }
-                cb(null, { id, ...updatedProduct });
-        });
-    }
-
-    static delete(id, cb) {
-        db.query(deleteProductQuery, id, (err, res) => {
-            if (err) {
-                logger.error(err.message);
-                cb(err, null);
                 return;
             }
             if (res.affectedRows === 0) {
                 cb({ kind: "not_found" }, null);
-                return;
-            }
-            cb(null, { message: "Product deleted successfully" });
-        });
+            return { message: "Product deleted successfully" };
+        } catch (error) {
+            logger.error(error.message);
+            throw error;
+        }
     }
 }
 
