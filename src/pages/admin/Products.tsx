@@ -103,7 +103,8 @@ export default function Products() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/products");
+      // Fetch products with images from the dedicated endpoint
+      const response = await api.get("/products/with-images/all");
       setProducts(response.data.data || []);
       setError("");
     } catch (err) {
