@@ -97,8 +97,13 @@ export default function Shop() {
         setLoading(true);
         const response = await api.get('/products/with-images/all');
         setDbProducts(response.data.data || []);
+        if (response.data.data && response.data.data.length > 0) {
+          toast.success(`Loaded ${response.data.data.length} products`);
+        }
       } catch (error: any) {
         console.error('Failed to fetch products:', error);
+        console.error('Error details:', error.response?.status, error.response?.data);
+        toast.error(error.response?.data?.message || 'Failed to load products from database');
         // Fall back to static products if API fails
         setDbProducts([]);
       } finally {

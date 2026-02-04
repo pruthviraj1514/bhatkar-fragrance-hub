@@ -40,7 +40,7 @@ SELECT
       'alt_text', pi.alt_text,
       'image_order', pi.image_order,
       'is_thumbnail', pi.is_thumbnail
-    ) ORDER BY pi.image_order
+    )
   ) as images
 FROM products p
 LEFT JOIN product_images pi ON p.id = pi.product_id
