@@ -9,6 +9,7 @@ const {
   deleteProductImages: deleteProductImagesQuery
 } = require('../database/productImages.queries');
 const { logger } = require('../utils/logger');
+const Product = require('./product.model');
 
 class ProductImage {
   constructor(productId, imageUrl, imageFormat = 'jpg', altText, imageOrder = 0, isThumbnail = false) {
@@ -101,8 +102,18 @@ class ProductImage {
 
       return product;
     } catch (error) {
-      logger.error(`Get product with images error: ${error.message}`);
-      throw error;
+      logger.warn(`Aggregate query failed for getProductWithImages: ${error.message}. Falling back to separate queries.`);
+      // Fallback: fetch product and images separately to support DBs without JSON aggregation
+      try {
+        const productDetails = await Product.getById(productId);
+        let images = await ProductImage.getProductImages(productId);
+        if (!Array.isArray(images)) images = [];
+        productDetails.images = images.filter(img => img && img.image_url !== null);
+        return productDetails;
+      } catch (fallbackError) {
+        logger.error(`Fallback getProductWithImages error: ${fallbackError.message}`);
+        throw fallbackError;
+      }
     }
   }
 
@@ -137,8 +148,21 @@ class ProductImage {
 
       return products;
     } catch (error) {
-      logger.error(`Get all products with images error: ${error.message}`);
-      throw error;
+      logger.warn(`Aggregate query failed for getAllProductsWithImages: ${error.message}. Falling back to separate queries.`);
+      // Fallback: query products and then fetch images per product
+      try {
+        const products = await Product.getAll();
+        const results = [];
+        for (const p of products) {
+          let images = await ProductImage.getProductImages(p.id);
+          if (!Array.isArray(images)) images = [];
+          results.push({ ...p, images: images.filter(img => img && img.image_url !== null) });
+        }
+        return results;
+      } catch (fallbackError) {
+        logger.error(`Fallback getAllProductsWithImages error: ${fallbackError.message}`);
+        throw fallbackError;
+      }
     }
   }
 

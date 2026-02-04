@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Use environment variable or fallback to localhost
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+// Use environment variable or fallback to deployed backend
+const baseURL = import.meta.env.VITE_API_BASE_URL || "https://bhatkar-fragrance-hub-1.onrender.com/api";
 
 const api = axios.create({
   baseURL,

@@ -130,7 +130,8 @@ exports.getProductWithImages = async (req, res) => {
     logger.error(`Get product with images error: ${error.message}`);
     return res.status(500).json({
       status: 'error',
-      message: 'Error retrieving product'
+      message: error.message || 'Error retrieving product',
+      ...(process.env.NODE_ENV !== 'production' ? { stack: error.stack } : {})
     });
   }
 };
@@ -151,7 +152,8 @@ exports.getAllProductsWithImages = async (req, res) => {
     logger.error(`Get all products with images error: ${error.message}`);
     return res.status(500).json({
       status: 'error',
-      message: 'Error retrieving products'
+      message: error.message || 'Error retrieving products',
+      ...(process.env.NODE_ENV !== 'production' ? { stack: error.stack } : {})
     });
   }
 };

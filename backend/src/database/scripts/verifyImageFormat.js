@@ -3,7 +3,16 @@
  * Tests the image format functionality
  */
 
+require('dotenv/config');
 const mysql = require('mysql2/promise');
+
+// Validate environment variables early for clearer errors
+const required = ['DB_HOST', 'DB_USER', 'DB_NAME'];
+const missing = required.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error(`\n❌ Missing environment variables: ${missing.join(', ')}\nSet them in your shell or in backend/.env before running this script.`);
+  process.exit(1);
+}
 
 async function verifyImageFormatSetup() {
   try {
@@ -13,8 +22,8 @@ async function verifyImageFormatSetup() {
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      port: process.env.DB_PORT,
+      password: process.env.DB_PASS || process.env.DB_PASSWORD,
+      port: process.env.DB_PORT || 3306,
       database: process.env.DB_NAME
     });
 
