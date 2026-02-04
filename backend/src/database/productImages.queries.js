@@ -1,10 +1,10 @@
 const createProductImage = `
-INSERT INTO product_images (product_id, image_url, alt_text, image_order, is_thumbnail)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO product_images (product_id, image_url, image_format, alt_text, image_order, is_thumbnail)
+VALUES (?, ?, ?, ?, ?, ?)
 `;
 
 const getProductImages = `
-SELECT id, product_id, image_url, alt_text, image_order, is_thumbnail, created_on
+SELECT id, product_id, image_url, image_format, alt_text, image_order, is_thumbnail, created_on
 FROM product_images
 WHERE product_id = ?
 ORDER BY image_order ASC
@@ -18,6 +18,7 @@ SELECT
     JSON_OBJECT(
       'id', pi.id,
       'image_url', pi.image_url,
+      'image_format', pi.image_format,
       'alt_text', pi.alt_text,
       'image_order', pi.image_order,
       'is_thumbnail', pi.is_thumbnail
@@ -37,6 +38,7 @@ SELECT
     JSON_OBJECT(
       'id', pi.id,
       'image_url', pi.image_url,
+      'image_format', pi.image_format,
       'alt_text', pi.alt_text,
       'image_order', pi.image_order,
       'is_thumbnail', pi.is_thumbnail
@@ -50,7 +52,7 @@ ORDER BY p.created_on DESC
 
 const updateProductImage = `
 UPDATE product_images
-SET image_url = ?, alt_text = ?, image_order = ?
+SET image_url = ?, image_format = ?, alt_text = ?, image_order = ?
 WHERE id = ? AND product_id = ?
 `;
 

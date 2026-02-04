@@ -5,6 +5,7 @@ import './ProductImageCarousel.css';
 interface ProductImage {
   id: number;
   image_url: string;
+  image_format?: string;
   alt_text: string;
   image_order: number;
   is_thumbnail: boolean;

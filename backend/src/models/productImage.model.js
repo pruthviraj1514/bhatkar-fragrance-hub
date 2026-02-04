@@ -11,20 +11,38 @@ const {
 const { logger } = require('../utils/logger');
 
 class ProductImage {
-  constructor(productId, imageUrl, altText, imageOrder = 0, isThumbnail = false) {
+  constructor(productId, imageUrl, imageFormat = 'jpg', altText, imageOrder = 0, isThumbnail = false) {
     this.productId = productId;
     this.imageUrl = imageUrl;
+    this.imageFormat = imageFormat || this.extractImageFormat(imageUrl);
     this.altText = altText || '';
     this.imageOrder = imageOrder;
     this.isThumbnail = isThumbnail;
   }
 
+  // Extract image format from URL
+  static extractImageFormat(url) {
+    if (!url) return 'jpg';
+    const match = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
+    if (match && match[1]) {
+      return match[1].toLowerCase();
+    }
+    return 'jpg';
+  }
+
+  // Extract image format from URL (instance method)
+  extractImageFormat(url) {
+    return ProductImage.extractImageFormat(url);
+  }
+
   // Add a single image to a product
   static async addImage(newImage) {
     try {
+      const imageFormat = newImage.imageFormat || ProductImage.extractImageFormat(newImage.imageUrl);
       const result = await db.query(createProductImageQuery, [
         newImage.productId,
         newImage.imageUrl,
+        imageFormat,
         newImage.altText,
         newImage.imageOrder,
         newImage.isThumbnail
@@ -32,7 +50,8 @@ class ProductImage {
 
       return {
         id: result[0].insertId,
-        ...newImage
+        ...newImage,
+        imageFormat
       };
     } catch (error) {
       logger.error(`Add image error: ${error.message}`);
@@ -126,8 +145,10 @@ class ProductImage {
   // Update a single image
   static async updateImage(imageId, productId, updates) {
     try {
+      const imageFormat = updates.imageFormat || ProductImage.extractImageFormat(updates.imageUrl);
       const result = await db.query(updateProductImageQuery, [
         updates.imageUrl,
+        imageFormat,
         updates.altText,
         updates.imageOrder,
         imageId,

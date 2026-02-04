@@ -6,7 +6,7 @@ const { logger } = require('../utils/logger');
 exports.addProductImages = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { images } = req.body; // Array of { imageUrl, altText, imageOrder, isThumbnail }
+    const { images } = req.body; // Array of { imageUrl, altText, imageOrder, isThumbnail, imageFormat }
 
     // Validate product exists
     try {
@@ -50,6 +50,7 @@ exports.addProductImages = async (req, res) => {
       const newImage = new ProductImage(
         productId,
         img.imageUrl,
+        img.imageFormat || ProductImage.extractImageFormat(img.imageUrl),
         img.altText || `Product Image ${i + 1}`,
         img.imageOrder || i + 1,
         img.isThumbnail || (i === 0) // First image as thumbnail by default
