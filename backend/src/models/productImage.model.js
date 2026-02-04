@@ -60,23 +60,20 @@ class ProductImage {
       }
 
       const product = rows[0];
-      // Parse JSON images array and filter out nulls
-      try {
-        if (product.images) {
-          const parsed = typeof product.images === 'string' 
-            ? JSON.parse(product.images) 
-            : product.images;
-          
-          if (Array.isArray(parsed)) {
-            product.images = parsed.filter(img => img && img.image_url !== null);
-          } else {
-            product.images = [];
-          }
-        } else {
+      // mysql2 returns JSON_ARRAYAGG already parsed as array
+      if (product.images && Array.isArray(product.images)) {
+        // Filter out null image objects (from products with no images)
+        product.images = product.images.filter(img => img && img.image_url !== null);
+      } else if (product.images && typeof product.images === 'string') {
+        // Fallback for string JSON (if needed)
+        try {
+          const parsed = JSON.parse(product.images);
+          product.images = Array.isArray(parsed) ? parsed.filter(img => img && img.image_url !== null) : [];
+        } catch (e) {
+          logger.warn(`Could not parse images string for product ${productId}`);
           product.images = [];
         }
-      } catch (parseError) {
-        logger.error(`Error parsing images for product ${productId}: ${parseError.message}`);
+      } else {
         product.images = [];
       }
 
@@ -96,33 +93,27 @@ class ProductImage {
       const [rows] = await db.query(getAllProductsWithImagesQuery);
 
       const products = rows.map(product => {
-        try {
-          let images = [];
-          if (product.images) {
-            // Handle both JSON string and parsed object
-            const parsed = typeof product.images === 'string' 
-              ? JSON.parse(product.images) 
-              : product.images;
-            
-            // Ensure parsed is an array and filter out nulls
-            if (Array.isArray(parsed)) {
-              images = parsed.filter(img => img && img.image_url !== null);
-            }
+        // mysql2 returns JSON_ARRAYAGG already parsed as array
+        let images = [];
+        if (product.images && Array.isArray(product.images)) {
+          // Filter out null image objects (from products with no images)
+          images = product.images.filter(img => img && img.image_url !== null);
+        } else if (product.images && typeof product.images === 'string') {
+          // Fallback for string JSON (if needed)
+          try {
+            const parsed = JSON.parse(product.images);
+            images = Array.isArray(parsed) ? parsed.filter(img => img && img.image_url !== null) : [];
+          } catch (e) {
+            logger.warn(`Could not parse images string for product ${product.id}`);
+            images = [];
           }
-          
-          return {
-            ...product,
-            price: parseFloat(product.price),
-            images: images
-          };
-        } catch (parseError) {
-          logger.error(`Error parsing images for product ${product.id}: ${parseError.message}`);
-          return {
-            ...product,
-            price: parseFloat(product.price),
-            images: []
-          };
         }
+        
+        return {
+          ...product,
+          price: parseFloat(product.price),
+          images: images
+        };
       });
 
       return products;
