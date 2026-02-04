@@ -110,7 +110,7 @@ exports.getProductImages = async (req, res) => {
 // Get product with all images (detailed product info + images)
 exports.getProductWithImages = async (req, res) => {
   try {
-    const { productId } = req.params;
+    const { id: productId } = req.params;
 
     const product = await ProductImage.getProductWithImages(productId);
 
