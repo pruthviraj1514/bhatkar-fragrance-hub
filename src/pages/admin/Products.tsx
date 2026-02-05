@@ -661,35 +661,40 @@ function ImageUploadForm({
       return;
     }
 
+    if (!editingId) {
+      toast.error("Please save the product first before uploading images");
+      return;
+    }
+
     setIsUploading(true);
     try {
-      // Convert file to base64 data URL because backend expects base64 payload
-      const fileToBase64 = (file: File) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = (err) => reject(err);
-          reader.readAsDataURL(file);
-        });
+      // Use FormData with raw file - backend will stream to Railway Storage
+      const formData = new FormData();
+      formData.append("images", selectedFile);
 
-      const base64 = await fileToBase64(selectedFile);
-      console.log("Base64 file size:", base64.length, "bytes");
+      console.log("Uploading file:", selectedFile.name, "to product:", editingId);
 
-      // Upload to backend (expects { file: base64, altText })
-      // altText is optional - can be empty string
-      const response = await api.post("/upload-image", {
-        file: base64,
-        altText: altText || "",
+      // Upload to backend Railway Storage endpoint
+      const response = await api.post(`/images/upload/${editingId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      const imageUrl = response.data.imageUrl || response.data.url || response.data.data?.imageUrl;
-      onAdd(imageUrl, altText || "Product image");
+      // Backend returns uploaded images array
+      const uploadedImages = response.data.data?.images || [];
+      if (uploadedImages.length > 0) {
+        const imageUrl = uploadedImages[0].image_url;
+        onAdd(imageUrl, altText || "Product image");
+        toast.success("Image uploaded to Railway Storage!");
+      } else {
+        throw new Error("No image URL returned from server");
+      }
       
       // Reset form
       setSelectedFile(null);
       setFilePreview(null);
       setAltText("");
-      toast.success("Image uploaded successfully!");
     } catch (error: any) {
       console.error("Upload error:", error.response?.data || error.message);
       const errorMsg = error.response?.data?.message || error.message || "Failed to upload image";

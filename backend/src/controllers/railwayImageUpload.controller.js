@@ -19,8 +19,11 @@ exports.uploadProductImages = async (req, res) => {
     const { productId } = req.params;
     const files = req.files;
 
+    console.log(`📤 Upload request - Product: ${productId}, Files: ${files?.length || 0}`);
+
     // Validation
     if (!files || files.length === 0) {
+      console.error("❌ No files in request");
       return res.status(400).json({
         status: 'error',
         message: 'No files uploaded',
@@ -68,10 +71,14 @@ exports.uploadProductImages = async (req, res) => {
     for (let i = 0; i < files.length; i++) {
       try {
         const file = files[i];
+        console.log(`📤 Uploading file ${i + 1}/${files.length}: ${file.originalname} (${file.size} bytes)`);
+        
         const imageUrl = await uploadToRailway(
           file.buffer,
           file.originalname
         );
+        
+        console.log(`✅ File uploaded to Railway: ${imageUrl}`);
 
         // Determine image order and thumbnail status
         const imageOrder = existingCount + i + 1;
@@ -86,11 +93,13 @@ exports.uploadProductImages = async (req, res) => {
             productId,
             imageUrl,
             file.originalname.split('.').pop().toLowerCase(), // Get file extension
-            `${productExists[0].name || 'Product'} - Image ${imageOrder}`,
+            `Product - Image ${imageOrder}`,
             imageOrder,
             isThumbnail ? 1 : 0,
           ]
         );
+
+        console.log(`✅ Saved to DB - Image ID: ${result.insertId}, URL: ${imageUrl}`);
 
         uploadedImages.push({
           id: result.insertId,
@@ -100,6 +109,7 @@ exports.uploadProductImages = async (req, res) => {
           is_thumbnail: isThumbnail,
         });
       } catch (error) {
+        console.error(`❌ Error uploading file ${i + 1}:`, error.message);
         failedUploads.push({
           fileName: files[i].originalname,
           error: error.message,
