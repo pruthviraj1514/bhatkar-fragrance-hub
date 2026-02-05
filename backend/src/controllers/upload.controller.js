@@ -15,12 +15,8 @@ exports.uploadImage = async (req, res) => {
       });
     }
 
-    if (!altText || !altText.trim()) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Alt text is required'
-      });
-    }
+    // Allow alt text to be optional — provide a sensible default when missing
+    const altTextValue = altText && altText.trim() ? altText.trim() : 'Product image';
 
     // Validate file (basic check since it's base64)
     if (typeof file !== 'string' || !file.startsWith('data:image/')) {
@@ -57,7 +53,7 @@ exports.uploadImage = async (req, res) => {
       message: 'Image uploaded successfully',
       data: {
         imageUrl,
-        altText
+        altText: altTextValue
       },
       imageUrl // For compatibility
     });
@@ -85,12 +81,8 @@ exports.uploadImageFile = async (req, res) => {
 
     const { altText } = req.body;
 
-    if (!altText || !altText.trim()) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Alt text is required'
-      });
-    }
+    // Allow alt text to be optional for file upload as well
+    const altTextValue = altText && altText.trim() ? altText.trim() : 'Product image';
 
     // Validate file
     validateImageFile(req.file.buffer, req.file.mimetype, req.file.size);
@@ -117,7 +109,7 @@ exports.uploadImageFile = async (req, res) => {
       message: 'Image uploaded successfully',
       data: {
         imageUrl,
-        altText
+        altText: altTextValue
       },
       imageUrl // For compatibility
     });

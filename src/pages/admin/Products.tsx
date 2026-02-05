@@ -656,26 +656,34 @@ function ImageUploadForm({
   };
 
   const handleUploadFile = async () => {
-    if (!selectedFile || !altText.trim()) {
-      toast.error("Please select a file and add alt text");
+    if (!selectedFile) {
+      toast.error("Please select a file to upload");
       return;
     }
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("altText", altText);
+      // Convert file to base64 data URL because backend expects base64 payload
+      const fileToBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
 
-      // Upload to backend - adjust endpoint based on your API
-      const response = await api.post("/upload-image", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const base64 = await fileToBase64(selectedFile);
+      console.log("Base64 file size:", base64.length, "bytes");
+
+      // Upload to backend (expects { file: base64, altText })
+      // altText is optional - can be empty string
+      const response = await api.post("/upload-image", {
+        file: base64,
+        altText: altText || "",
       });
 
-      const imageUrl = response.data.imageUrl || response.data.url;
-      onAdd(imageUrl, altText);
+      const imageUrl = response.data.imageUrl || response.data.url || response.data.data?.imageUrl;
+      onAdd(imageUrl, altText || "Product image");
       
       // Reset form
       setSelectedFile(null);
@@ -683,8 +691,9 @@ function ImageUploadForm({
       setAltText("");
       toast.success("Image uploaded successfully!");
     } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(error.response?.data?.message || "Failed to upload image");
+      console.error("Upload error:", error.response?.data || error.message);
+      const errorMsg = error.response?.data?.message || error.message || "Failed to upload image";
+      toast.error(errorMsg);
     } finally {
       setIsUploading(false);
     }
@@ -788,7 +797,8 @@ function ImageUploadForm({
 
           {/* Alt Text Input */}
           <div>
-            <label className="text-xs font-medium block mb-1">Alt Text *</label>
+            <label className="text-xs font-medium block mb-1">Alt Text</label>
+            <p className="text-xs text-muted-foreground mb-2">Optional - defaults to 'Product image' if empty</p>
             <Input
               type="text"
               placeholder="e.g., Product front view"
@@ -803,7 +813,7 @@ function ImageUploadForm({
           <Button
             type="button"
             onClick={handleUploadFile}
-            disabled={disabled || !selectedFile || !altText.trim() || isUploading}
+            disabled={disabled || !selectedFile || isUploading}
             className="w-full text-xs gap-1"
             size="sm"
           >
