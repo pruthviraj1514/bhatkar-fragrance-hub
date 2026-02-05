@@ -538,6 +538,7 @@ export default function Products() {
                   <ImageUploadForm 
                     onAdd={handleAddImage}
                     disabled={isSubmitting || images.length >= 4}
+                    productId={editingId}
                   />
                 </div>
 
@@ -607,10 +608,12 @@ export default function Products() {
 // Image Upload Form Component
 function ImageUploadForm({ 
   onAdd, 
-  disabled 
+  disabled,
+  productId
 }: { 
   onAdd: (imageUrl: string, altText: string) => void;
   disabled?: boolean;
+  productId?: number | null;
 }) {
   const [imageUrl, setImageUrl] = useState("");
   const [altText, setAltText] = useState("");
@@ -661,7 +664,7 @@ function ImageUploadForm({
       return;
     }
 
-    if (!editingId) {
+    if (!productId) {
       toast.error("Please save the product first before uploading images");
       return;
     }
@@ -672,10 +675,10 @@ function ImageUploadForm({
       const formData = new FormData();
       formData.append("images", selectedFile);
 
-      console.log("Uploading file:", selectedFile.name, "to product:", editingId);
+      console.log("Uploading file:", selectedFile.name, "to product:", productId);
 
       // Upload to backend Railway Storage endpoint
-      const response = await api.post(`/images/upload/${editingId}`, formData, {
+      const response = await api.post(`/images/upload/${productId}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
