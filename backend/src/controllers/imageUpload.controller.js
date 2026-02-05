@@ -203,14 +203,28 @@ exports.uploadTempImages = async (req, res) => {
     }
 
     const uploaded = [];
-    const { uploadToCloudinary } = require('../config/cloudinary.config');
+    // Prefer Railway Object Storage if configured, otherwise fallback to Cloudinary
+    const useRailway = process.env.S3_BUCKET && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY;
+    let uploadFn = null;
+    if (useRailway) {
+      uploadFn = require('../config/railwayStorage.config').uploadToRailway;
+      console.log('Using Railway Object Storage for temp uploads');
+    } else {
+      uploadFn = require('../config/cloudinary.config').uploadToCloudinary;
+      console.log('Using Cloudinary for temp uploads');
+    }
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
         const fileName = `temp-${Date.now()}-${i}`;
-        const result = await uploadToCloudinary(file.buffer, fileName);
-        uploaded.push({ image_url: result.url, image_format: result.format });
+        const result = await uploadFn(file.buffer, fileName);
+        // railway upload returns publicUrl string, cloudinary returns object
+        if (useRailway) {
+          uploaded.push({ image_url: result, image_format: file.originalname.split('.').pop().toLowerCase() });
+        } else {
+          uploaded.push({ image_url: result.url, image_format: result.format });
+        }
       } catch (err) {
         console.error('Temp upload error:', err && err.message ? err.message : err);
         console.error(err && err.stack ? err.stack : 'no stack');
