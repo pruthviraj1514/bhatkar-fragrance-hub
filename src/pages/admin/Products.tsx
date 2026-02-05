@@ -348,7 +348,7 @@ export default function Products() {
                     // Get thumbnail image for database products
                     const productImages = product.images || [];
                     const thumbnailImage = productImages.find((img: any) => img.is_thumbnail) || productImages[0];
-                    const imageUrl = thumbnailImage?.image_url || '/images/placeholder.jpg';
+                    const imageUrl = thumbnailImage?.image_url || '/placeholder.svg';
                     
                     return (
                     <TableRow key={product.id} className="hover:bg-muted/50">
@@ -359,7 +359,7 @@ export default function Products() {
                             alt={product.name}
                             className="w-full h-full object-cover"
                             onError={(e: any) => {
-                              e.target.src = '/images/placeholder.jpg';
+                              e.target.src = '/placeholder.svg';
                             }}
                           />
                         </div>

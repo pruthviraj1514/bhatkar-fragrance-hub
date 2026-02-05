@@ -43,7 +43,7 @@ function getDatabaseProductImage(product: DatabaseProduct): string {
     const thumbnail = product.images.find(img => img.is_thumbnail) || product.images[0];
     return thumbnail.image_url;
   }
-  return '/images/placeholder.jpg';
+  return '/placeholder.svg';
 }
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
@@ -95,7 +95,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               animate={{ scale: isHovered ? 1.05 : 1 }}
               transition={{ duration: 0.4 }}
               onError={(e: any) => {
-                e.target.src = '/images/placeholder.jpg';
+                e.target.src = '/placeholder.svg';
               }}
             />
 
