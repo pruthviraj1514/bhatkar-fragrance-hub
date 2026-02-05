@@ -212,8 +212,9 @@ exports.uploadTempImages = async (req, res) => {
         const result = await uploadToCloudinary(file.buffer, fileName);
         uploaded.push({ image_url: result.url, image_format: result.format });
       } catch (err) {
-        console.error('Temp upload error:', err.message);
-        return res.status(500).json({ status: 'error', message: 'Failed to upload images' });
+        console.error('Temp upload error:', err && err.message ? err.message : err);
+        console.error(err && err.stack ? err.stack : 'no stack');
+        return res.status(500).json({ status: 'error', message: (err && err.message) ? `Upload failed: ${err.message}` : 'Failed to upload images' });
       }
     }
 

@@ -12,6 +12,7 @@ cloudinary.config({
 const verifyCloudinaryConfig = () => {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     logger.error('❌ Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env');
+    // Throwing here will stop the server on startup which helps catch misconfiguration early
     throw new Error('Cloudinary configuration incomplete');
   }
   logger.info('✅ Cloudinary configured successfully');
