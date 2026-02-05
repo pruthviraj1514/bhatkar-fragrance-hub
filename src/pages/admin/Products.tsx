@@ -623,6 +623,12 @@ function ImageUploadForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentProductId, setCurrentProductId] = useState<number | null | undefined>(productId);
+
+  // Update local state when productId prop changes
+  useEffect(() => {
+    setCurrentProductId(productId);
+  }, [productId]);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -665,8 +671,8 @@ function ImageUploadForm({
       return;
     }
 
-    if (!productId) {
-      toast.error("Please fill in product details and save first to enable image uploads");
+    if (!currentProductId) {
+      toast.error("Please save the product first, then upload images");
       return;
     }
 
@@ -675,21 +681,24 @@ function ImageUploadForm({
       const form = new FormData();
       form.append("images", selectedFile);
 
-      console.log("Uploading file:", selectedFile.name, "to product:", productId);
+      console.log("🚀 Uploading to Railway Storage - Product:", currentProductId, "File:", selectedFile.name);
 
       // Upload to backend Railway Storage endpoint
-      const response = await api.post(`/images/upload/${productId}`, form, {
+      const response = await api.post(`/images/upload/${currentProductId}`, form, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
+      console.log("✅ Upload response:", response.data);
+
       // Backend returns uploaded images array
       const uploadedImages = response.data.data?.images || [];
       if (uploadedImages.length > 0) {
         const imageUrl = uploadedImages[0].image_url;
+        console.log("✅ Image URL from Railway:", imageUrl);
         onAdd(imageUrl, altText || "Product image");
-        toast.success("Image uploaded to Railway Storage!");
+        toast.success("Image uploaded to Railway Storage successfully!");
       } else {
         throw new Error("No image URL returned from server");
       }
@@ -699,7 +708,7 @@ function ImageUploadForm({
       setFilePreview(null);
       setAltText("");
     } catch (error: any) {
-      console.error("Upload error:", error.response?.data || error.message);
+      console.error("❌ Upload error:", error.response?.data || error.message);
       const errorMsg = error.response?.data?.message || error.message || "Failed to upload image";
       toast.error(errorMsg);
     } finally {
@@ -721,7 +730,7 @@ function ImageUploadForm({
   return (
     <div className="space-y-3">
       {/* Show message if product not yet saved */}
-      {!productId && (
+      {!currentProductId && (
         <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-xs text-blue-900 font-medium">
             💡 Tip: Save the product details first to enable image uploads
@@ -734,24 +743,24 @@ function ImageUploadForm({
         <button
           type="button"
           onClick={() => setUploadMethod("file")}
-          disabled={!productId}
+          disabled={!currentProductId}
           className={`px-3 py-2 text-xs font-medium transition-colors ${
             uploadMethod === "file"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
-          } ${!productId ? "opacity-50 cursor-not-allowed" : ""}`}
+          } ${!currentProductId ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           📁 Upload File
         </button>
         <button
           type="button"
           onClick={() => setUploadMethod("url")}
-          disabled={!productId}
+          disabled={!currentProductId}
           className={`px-3 py-2 text-xs font-medium transition-colors ${
             uploadMethod === "url"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
-          } ${!productId ? "opacity-50 cursor-not-allowed" : ""}`}
+          } ${!currentProductId ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           🔗 Use URL
         </button>
