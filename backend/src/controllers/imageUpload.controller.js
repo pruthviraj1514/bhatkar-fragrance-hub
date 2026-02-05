@@ -197,7 +197,4 @@ function extractPublicIdFromUrl(url) {
   }
 }
 
-module.exports = {
-  uploadProductImages,
-  deleteProductImage
-};
+
