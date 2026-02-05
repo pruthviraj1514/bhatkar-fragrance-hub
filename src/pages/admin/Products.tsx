@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Loader, Upload, X } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader, Upload, X, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -380,6 +380,15 @@ export default function Products() {
                       <TableCell>{product.stock}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/products/${product.id}/images`)}
+                            className="gap-1"
+                          >
+                            <Images className="h-4 w-4" />
+                            Images
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
