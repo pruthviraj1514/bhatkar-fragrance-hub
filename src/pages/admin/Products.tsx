@@ -584,12 +584,12 @@ export default function Products() {
             </div>
 
             {/* Product Images */}
-            <div className="border-t pt-4">
-              <div className="mb-4">
-                <label className="text-sm font-medium block mb-3">Product Images (Max 4)</label>
+            <div className="border-t pt-3">
+              <div className="mb-2">
+                <label className="text-xs font-semibold block mb-2 uppercase tracking-wide text-muted-foreground">Images (Max 4)</label>
                 
                 {/* Image Upload Form */}
-                <div className="space-y-3 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2 mb-3 p-2 bg-muted/50 rounded">
                   <ImageUploadForm 
                     onAdd={handleAddImage}
                     disabled={isSubmitting || images.length >= 4}
@@ -599,18 +599,18 @@ export default function Products() {
 
                 {/* Images List */}
                 {images.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {images.length} image{images.length !== 1 ? 's' : ''} added
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {images.length}/{4} images added
                     </p>
                     {images.map((image, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-2 p-2 bg-muted rounded border border-input"
+                        className="flex items-center gap-1 p-1 bg-muted rounded border border-input text-xs"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-xs truncate font-medium">{image.altText}</p>
-                          <p className="text-xs text-muted-foreground truncate">{image.imageUrl}</p>
+                          <p className="text-xs text-muted-foreground truncate">{image.imageUrl.substring(0, 40)}...</p>
                         </div>
                         <Button
                           type="button"
@@ -618,9 +618,9 @@ export default function Products() {
                           variant={image.isThumbnail ? "default" : "outline"}
                           onClick={() => handleSetThumbnail(index)}
                           disabled={isSubmitting}
-                          className="text-xs"
+                          className="text-xs h-6 px-2"
                         >
-                          {image.isThumbnail ? "✓ Thumb" : "Thumb"}
+                          {image.isThumbnail ? "✓" : "Thumb"}
                         </Button>
                         <Button
                           type="button"
@@ -628,6 +628,7 @@ export default function Products() {
                           variant="destructive"
                           onClick={() => handleRemoveImage(index)}
                           disabled={isSubmitting}
+                          className="h-6 w-6 p-0"
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -808,30 +809,30 @@ function ImageUploadForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Upload Method Tabs - Now always enabled */}
-      <div className="flex gap-2 border-b">
+      <div className="flex gap-1 border-b">
         <button
           type="button"
           onClick={() => setUploadMethod("file")}
-          className={`px-3 py-2 text-xs font-medium transition-colors ${
+          className={`px-2 py-1 text-xs font-medium transition-colors ${
             uploadMethod === "file"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          📁 Upload File
+          📁 File
         </button>
         <button
           type="button"
           onClick={() => setUploadMethod("url")}
-          className={`px-3 py-2 text-xs font-medium transition-colors ${
+          className={`px-2 py-1 text-xs font-medium transition-colors ${
             uploadMethod === "url"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          🔗 Use URL
+          🔗 URL
         </button>
       </div>
 
@@ -846,7 +847,7 @@ function ImageUploadForm({
               setIsDragging(true);
             }}
             onDragLeave={() => setIsDragging(false)}
-            className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+            className={`relative border-2 border-dashed rounded-lg p-2 text-center transition-colors ${
               isDragging
                 ? "border-primary bg-primary/5"
                 : "border-input bg-muted/50 hover:border-primary/50"
@@ -862,30 +863,24 @@ function ImageUploadForm({
             />
             <label htmlFor="fileInput" className="cursor-pointer block">
               {filePreview ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <img
                     src={filePreview}
                     alt="Preview"
-                    className="h-16 w-16 object-cover rounded mx-auto flex-shrink-0"
+                    className="h-12 w-12 object-cover rounded mx-auto flex-shrink-0"
                   />
                   <p className="text-xs font-medium text-foreground line-clamp-1">
                     {selectedFile?.name}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click or drag to replace
-                  </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                <div className="space-y-1">
+                  <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
                   <p className="text-xs font-medium text-foreground">
-                    Drag and drop your image here
+                    Drag & drop or click
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    or click to select from computer
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Max size: 5MB (JPG, PNG, WebP)
+                    Max 5MB
                   </p>
                 </div>
               )}
@@ -894,15 +889,14 @@ function ImageUploadForm({
 
           {/* Alt Text Input */}
           <div>
-            <label className="text-xs font-medium block mb-1">Alt Text</label>
-            <p className="text-xs text-muted-foreground mb-2">Optional - defaults to 'Product image' if empty</p>
+            <label className="text-xs font-medium block mb-1">Alt Text (optional)</label>
             <Input
               type="text"
-              placeholder="e.g., Product front view"
+              placeholder="e.g., Front view"
               value={altText}
               onChange={(e) => setAltText(e.target.value)}
               disabled={disabled || !selectedFile}
-              className="text-xs"
+              className="text-xs h-8"
             />
           </div>
 
@@ -911,7 +905,7 @@ function ImageUploadForm({
             type="button"
             onClick={handleUploadFile}
             disabled={disabled || !selectedFile || isUploading}
-            className="w-full text-xs gap-1"
+            className="w-full text-xs gap-1 h-8"
             size="sm"
           >
             {isUploading ? (
@@ -922,7 +916,7 @@ function ImageUploadForm({
             ) : (
               <>
                 <Upload className="h-3 w-3" />
-                Upload Image
+                Upload
               </>
             )}
           </Button>
@@ -937,9 +931,9 @@ function ImageUploadForm({
                 setFilePreview(null);
               }}
               disabled={disabled}
-              className="w-full text-xs"
+              className="w-full text-xs h-8"
             >
-              Clear Selection
+              Clear
             </Button>
           )}
         </div>
@@ -956,30 +950,27 @@ function ImageUploadForm({
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               disabled={disabled}
-              className="text-xs"
+              className="text-xs h-8"
               required
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Use HTTPS URLs (e.g., Unsplash, Cloudinary, or your image CDN)
-            </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium block mb-1">Alt Text</label>
+            <label className="text-xs font-medium block mb-1">Alt Text (optional)</label>
             <Input
               type="text"
-              placeholder="e.g., Product front view"
+              placeholder="e.g., Front view"
               value={altText}
               onChange={(e) => setAltText(e.target.value)}
               disabled={disabled}
-              className="text-xs"
+              className="text-xs h-8"
             />
           </div>
 
           <Button
             type="submit"
             disabled={disabled || !imageUrl.trim()}
-            className="w-full text-xs gap-1"
+            className="w-full text-xs gap-1 h-8"
             size="sm"
           >
             <Upload className="h-3 w-3" />

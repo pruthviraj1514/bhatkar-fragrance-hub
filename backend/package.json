@@ -11,7 +11,8 @@
     "tables:up": "node src/database/scripts/tablesUp.js",
     "db:init": "npm run db:up && npm run tables:up",
     "db:init:clever-cloud": "node src/database/scripts/initCleverCloud.js",
-    "db:add:product-images": "node src/database/scripts/addProductImages.js"
+    "db:add:product-images": "node src/database/scripts/addProductImages.js",
+    "migrate:ml-pricing": "node src/database/scripts/migrateMlPricing.js"
   },
   "keywords": [],
   "author": "",
