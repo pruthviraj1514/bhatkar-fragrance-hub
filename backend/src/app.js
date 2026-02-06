@@ -6,6 +6,7 @@ const path = require("path");
 const authRoute = require("./routes/auth.route");
 const adminRoute = require("./routes/admin.route");
 const productRoute = require("./routes/product.route");
+const orderRoute = require("./routes/order.route");
 const uploadRoute = require("./routes/upload.route");
 const imageRoute = require("./routes/image.route");
 const { httpLogStream } = require("./utils/logger");
@@ -77,6 +78,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/products", productRoute);
+app.use("/api/orders", orderRoute);
 app.use("/api/upload-image", uploadRoute);
 app.use("/api/images", imageRoute);
 

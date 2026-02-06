@@ -203,32 +203,54 @@ exports.uploadTempImages = async (req, res) => {
     }
 
     const uploaded = [];
-    // Prefer Railway Object Storage if configured, otherwise fallback to Cloudinary
-    const useRailway = process.env.S3_BUCKET && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY;
-    let uploadFn = null;
-    if (useRailway) {
-      uploadFn = require('../config/railwayStorage.config').uploadToRailway;
-      console.log('Using Railway Object Storage for temp uploads');
-    } else {
-      uploadFn = require('../config/cloudinary.config').uploadToCloudinary;
-      console.log('Using Cloudinary for temp uploads');
+    // Detect available storage backends
+    const hasS3Env = process.env.S3_BUCKET && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY;
+    const hasCloudinaryEnv = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+
+    if (!hasS3Env && !hasCloudinaryEnv) {
+      console.error('No storage provider configured: set S3_* or CLOUDINARY_* env vars');
+      return res.status(500).json({ status: 'error', message: 'No image storage configured on server' });
     }
+
+    // Helper to attempt railway then fallback to cloudinary
+    const tryUpload = async (fileBuffer, fileName) => {
+      // Try Railway if configured
+      if (hasS3Env) {
+        try {
+          const railway = require('../config/railwayStorage.config');
+          const publicUrl = await railway.uploadToRailway(fileBuffer, fileName);
+          return { url: publicUrl, format: fileName.split('.').pop(), source: 'railway' };
+        } catch (railErr) {
+          console.error('Railway upload failed:', railErr && railErr.message ? railErr.message : railErr);
+          // fallthrough to cloudinary if available
+        }
+      }
+
+      // Try Cloudinary if configured
+      if (hasCloudinaryEnv) {
+        try {
+          const cloudinary = require('../config/cloudinary.config');
+          const result = await cloudinary.uploadToCloudinary(fileBuffer, fileName);
+          return { url: result.url, format: result.format, source: 'cloudinary' };
+        } catch (cloudErr) {
+          console.error('Cloudinary upload failed:', cloudErr && cloudErr.message ? cloudErr.message : cloudErr);
+          throw cloudErr;
+        }
+      }
+
+      throw new Error('No available storage backend to upload images');
+    };
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
         const fileName = `temp-${Date.now()}-${i}`;
-        const result = await uploadFn(file.buffer, fileName);
-        // railway upload returns publicUrl string, cloudinary returns object
-        if (useRailway) {
-          uploaded.push({ image_url: result, image_format: file.originalname.split('.').pop().toLowerCase() });
-        } else {
-          uploaded.push({ image_url: result.url, image_format: result.format });
-        }
+        const result = await tryUpload(file.buffer, fileName);
+        uploaded.push({ image_url: result.url, image_format: result.format || file.originalname.split('.').pop().toLowerCase(), source: result.source });
       } catch (err) {
         console.error('Temp upload error:', err && err.message ? err.message : err);
         console.error(err && err.stack ? err.stack : 'no stack');
-        return res.status(500).json({ status: 'error', message: (err && err.message) ? `Upload failed: ${err.message}` : 'Failed to upload images' });
+        return res.status(500).json({ status: 'error', message: 'Failed to upload images' });
       }
     }
 
