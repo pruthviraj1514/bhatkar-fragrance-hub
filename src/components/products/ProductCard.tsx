@@ -27,6 +27,8 @@ interface DatabaseProduct {
   description: string;
   stock: number;
   images: ProductImage[];
+  quantity_ml?: number;
+  quantity_unit?: string;
 }
 
 interface ProductCardProps {
@@ -190,6 +192,11 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               {!isStatic && (
                 <p className="text-xs text-muted-foreground mb-2">
                   {(product as DatabaseProduct).brand}
+                </p>
+              )}
+              {!isStatic && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  {((product as DatabaseProduct).quantity_ml ?? 0)}{(product as DatabaseProduct).quantity_unit || 'ml'}
                 </p>
               )}
             </div>
