@@ -115,7 +115,9 @@ export default function Shop() {
     const fetchProducts = async () => {
       try {
         const response = await api.get('/products/with-images/all');
+        
         const newProducts = response.data.data || [];
+        
         const prevCount = prevProductCountRef.current;
         
         if (newProducts.length !== prevCount) {
@@ -149,7 +151,8 @@ export default function Shop() {
 
   const filteredProducts = useMemo(() => {
     // Use database products if available, otherwise fall back to static products
-    let sourceProducts = dbProducts.length > 0 ? dbProducts : products;
+    let sourceProducts = dbProducts && dbProducts.length > 0 ? dbProducts : products;
+    
     let result = [...sourceProducts];
 
     // Search filter
