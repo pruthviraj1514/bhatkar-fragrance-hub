@@ -52,19 +52,25 @@ async function uploadToRailway(fileBuffer, fileName) {
     const random = Math.random().toString(36).substring(7);
     const fileKey = `products/${timestamp}-${random}-${fileName}`;
 
+    // Detect MIME type from fileName
+    const mimeType = detectMimeType(fileName);
+
     console.log(`📤 Starting upload to Railway Storage:`, {
       bucket: process.env.S3_BUCKET,
       key: fileKey,
       fileSize: fileBuffer.length,
+      mimeType: mimeType,
       endpoint: process.env.S3_ENDPOINT,
     });
 
+    // PutObjectCommand - Railway doesn't support ACL, so we don't include it
     const uploadCommand = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET,
       Key: fileKey,
       Body: fileBuffer,
-      ContentType: 'image/jpeg', // Can be enhanced to detect MIME type
-      ACL: 'public-read', // Make file publicly readable
+      ContentType: mimeType,
+      // Note: Railway Object Storage doesn't support ACL parameter
+      // Access is controlled via bucket policy or signed URLs
     });
 
     const result = await s3Client.send(uploadCommand);
@@ -73,9 +79,14 @@ async function uploadToRailway(fileBuffer, fileName) {
       etag: result.ETag,
     });
 
-    // Construct public URL
-    const publicUrl = `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${fileKey}`;
-    console.log(`✅ Public URL: ${publicUrl}`);
+    // Generate signed URL valid for 7 days (Railway requirement)
+    const getCommand = new GetObjectCommand({
+      Bucket: process.env.S3_BUCKET,
+      Key: fileKey,
+    });
+
+    const publicUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+    console.log(`✅ Signed URL generated (7 day expiry): ${publicUrl.substring(0, 80)}...`);
     
     return publicUrl;
   } catch (error) {
@@ -86,6 +97,24 @@ async function uploadToRailway(fileBuffer, fileName) {
     });
     throw new Error(`Failed to upload to Railway Storage: ${error.message}`);
   }
+}
+
+/**
+ * Helper function to detect MIME type from filename
+ * @param {string} fileName - File name
+ * @returns {string} - MIME type
+ */
+function detectMimeType(fileName) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+  const mimeTypes = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+  };
+  return mimeTypes[ext] || 'image/jpeg';
 }
 
 /**
