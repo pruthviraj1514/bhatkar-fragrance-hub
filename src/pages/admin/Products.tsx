@@ -656,7 +656,6 @@ export default function Products() {
                 {editingId ? "Update Product" : "Add Product"}
               </Button>
             </div>
-          </form>
         </DialogContent>
       </Dialog>
     </div>
