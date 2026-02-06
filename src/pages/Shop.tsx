@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Filter, SlidersHorizontal, X, Search } from "lucide-react";
+import { Filter, SlidersHorizontal, X, Search, RefreshCw } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,26 @@ export default function Shop() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dbProducts, setDbProducts] = useState<DatabaseProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const prevProductCountRef = useRef(0);
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await api.get('/products/with-images/all');
+      const newProducts = response.data.data || [];
+      setDbProducts(newProducts);
+      prevProductCountRef.current = newProducts.length;
+      console.log(`🔄 Manually refreshed: ${newProducts.length} products loaded`);
+      toast.success(`Refreshed! Showing ${newProducts.length} products`);
+    } catch (error: any) {
+      console.error('Failed to refresh products:', error);
+      toast.error('Failed to refresh products');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Fetch products from database with images
   useEffect(() => {
@@ -101,7 +120,7 @@ export default function Shop() {
         
         if (newProducts.length !== prevCount) {
           const diff = newProducts.length - prevCount;
-          if (diff > 0) {
+          if (diff > 0 && prevCount > 0) {
             console.log(`✅ New products detected! ${newProducts.length} total (added ${diff})`);
             toast.success(`New products added! Showing ${newProducts.length} total.`);
           }
@@ -368,6 +387,18 @@ export default function Shop() {
             </div>
 
             <div className="flex gap-3 items-center">
+              {/* Refresh Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+
               {/* Mobile Filter Button */}
               <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <SheetTrigger asChild>
@@ -407,9 +438,15 @@ export default function Shop() {
               </Select>
 
               {/* Results Count */}
-              <span className="text-sm text-muted-foreground hidden md:block">
-                {filteredProducts.length} products
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+                  {dbProducts.length > 0 && ` (${dbProducts.length} total)`}
+                </span>
+                {loading && (
+                  <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                )}
+              </div>
             </div>
           </div>
 
