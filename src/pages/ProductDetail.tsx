@@ -30,18 +30,23 @@ export default function ProductDetail() {
   const { addItem } = useCart();
 
   const [remoteProduct, setRemoteProduct] = useState<any | null>(null);
+  const [variants, setVariants] = useState<any[]>([]);
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
   const product = localProduct || remoteProduct;
 
-  const [selectedSize, setSelectedSize] = useState(
-    // if local product exists use its sizes, otherwise fallback to a normalized remote product
-    (localProduct && localProduct.sizes[localProduct.sizes.length - 1]) || { ml: (remoteProduct?.quantity_ml ?? 100), price: (remoteProduct?.price ?? 0) }
-  );
+  // Default to first variant or fallback
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Calculate total price and available stock
+  const variantPrice = selectedVariant?.price ?? product?.price ?? 0;
+  const totalPrice = variantPrice * quantity;
+  const availableStock = selectedVariant?.stock ?? product?.stock ?? 0;
+  const maxQuantity = Math.min(10, availableStock); // Max 10 or available stock, whichever is less
 
   useEffect(() => {
     if (localProduct) return; // nothing to fetch
@@ -85,12 +90,37 @@ export default function ProductDetail() {
         };
 
         setRemoteProduct(normalized);
-        // set default selected size from normalized product
-        setSelectedSize(normalized.sizes[normalized.sizes.length - 1] || { ml: normalized.quantity_ml || 100, price: normalized.price || 0 });
+
+        // Fetch variants for this product
+        return api.get(`/variants/product/${p.id}`);
+      })
+      .then((variantRes) => {
+        if (!mounted) return;
+        const variantData = variantRes?.data?.data || [];
+        setVariants(variantData);
+        
+        // Set first variant as selected
+        if (variantData.length > 0) {
+          setSelectedVariant(variantData[0]);
+        }
       })
       .catch((err) => {
         if (!mounted) return;
-        setRemoteError(err?.response?.data?.message || err.message || 'Failed to load product');
+        // Log variant fetch error but don't fail - variants are optional
+        if (err?.response?.status !== 404) {
+          console.error('Error fetching variants:', err);
+        }
+        // Set default variant with product's base price/stock
+        const product = remoteProduct || {};
+        setSelectedVariant({
+          id: null,
+          product_id: product.id,
+          variant_name: `${product.quantity_ml || 100}${product.quantity_unit || 'ml'}`,
+          variant_value: product.quantity_ml || 100,
+          variant_unit: product.quantity_unit || 'ml',
+          price: product.price || 0,
+          stock: product.stock || 0
+        });
       })
       .finally(() => {
         if (mounted) setLoadingRemote(false);
@@ -120,9 +150,19 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
-    addItem(product, selectedSize.ml, selectedSize.price);
+    if (!selectedVariant) {
+      toast.error("Please select a variant");
+      return;
+    }
+    
+    if (quantity <= 0 || quantity > availableStock) {
+      toast.error(`Invalid quantity. Available: ${availableStock}`);
+      return;
+    }
+
+    addItem(product, selectedVariant.variant_value, variantPrice, quantity);
     toast.success(`${product.name} added to cart!`, {
-      description: `${selectedSize.ml}ml × ${quantity}`,
+      description: `${selectedVariant.variant_name} × ${quantity}`,
     });
   };
 
@@ -230,10 +270,12 @@ export default function ProductDetail() {
 
               {/* Net Quantity / Size display similar to mobile screenshot */}
               <div className="text-sm text-muted-foreground mb-4">
-                {product.quantity_ml ? (
+                {selectedVariant ? (
+                  <span>Net quantity: 1 pc ({selectedVariant.variant_name})</span>
+                ) : product.quantity_ml ? (
                   <span>Net quantity: 1 pc ({product.quantity_ml}{product.quantity_unit || 'ml'})</span>
                 ) : (
-                  <span>Net quantity: 1 pc ({selectedSize?.ml || 100} ml)</span>
+                  <span>Net quantity: 1 pc (100 ml)</span>
                 )}
               </div>
 
@@ -258,15 +300,27 @@ export default function ProductDetail() {
                 </span>
               </div>
 
-              {/* Price */}
-              <div className="flex items-baseline gap-3 mb-8">
-                <span className="text-3xl font-bold text-primary">
-                  {formatPrice(selectedSize.price)}
-                </span>
-                {product.originalPrice && (
-                  <span className="text-xl text-muted-foreground line-through">
-                    {formatPrice(product.originalPrice)}
+              {/* Price - Show unit price and total price */}
+              <div className="mb-8">
+                <div className="flex items-baseline gap-3 mb-2">
+                  <span className="text-3xl font-bold text-primary">
+                    {formatPrice(totalPrice)}
                   </span>
+                  {quantity > 1 && (
+                    <span className="text-sm text-muted-foreground">
+                      ({formatPrice(variantPrice)} × {quantity})
+                    </span>
+                  )}
+                  {product.originalPrice && (
+                    <span className="text-xl text-muted-foreground line-through">
+                      {formatPrice(product.originalPrice)}
+                    </span>
+                  )}
+                </div>
+                {quantity > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Unit price: {formatPrice(variantPrice)}
+                  </p>
                 )}
               </div>
 
@@ -275,31 +329,68 @@ export default function ProductDetail() {
                 {product.description}
               </p>
 
-              {/* Size Selection */}
-              <div className="mb-8">
-                <Label className="text-base font-semibold mb-4 block">
-                  Select Size
-                </Label>
-                <div className="flex gap-3">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size.ml}
-                      onClick={() => setSelectedSize(size)}
-                      className={cn(
-                        "px-6 py-3 rounded-lg border-2 transition-all duration-300",
-                        selectedSize.ml === size.ml
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      <span className="block font-semibold">{size.ml}ml</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatPrice(size.price)}
-                      </span>
-                    </button>
-                  ))}
+              {/* Variant Selection */}
+              {variants.length > 0 ? (
+                <div className="mb-8">
+                  <Label className="text-base font-semibold mb-4 block">
+                    Select Size / Variant
+                  </Label>
+                  <div className="flex flex-wrap gap-3">
+                    {variants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        onClick={() => {
+                          setSelectedVariant(variant);
+                          setQuantity(1); // Reset quantity when variant changes
+                        }}
+                        className={cn(
+                          "px-6 py-3 rounded-lg border-2 transition-all duration-300",
+                          selectedVariant?.id === variant.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <span className="block font-semibold">{variant.variant_name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatPrice(variant.price)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {variant.stock > 0 ? `${variant.stock} in stock` : "Out of stock"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : localProduct?.sizes && localProduct.sizes.length > 0 ? (
+                // Fallback for static products
+                <div className="mb-8">
+                  <Label className="text-base font-semibold mb-4 block">
+                    Select Size
+                  </Label>
+                  <div className="flex gap-3">
+                    {localProduct.sizes.map((size: any) => (
+                      <button
+                        key={size.ml}
+                        onClick={() => {
+                          setSelectedVariant(size);
+                          setQuantity(1);
+                        }}
+                        className={cn(
+                          "px-6 py-3 rounded-lg border-2 transition-all duration-300",
+                          selectedVariant?.ml === size.ml
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <span className="block font-semibold">{size.ml}ml</span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatPrice(size.price)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {/* Quantity */}
               <div className="mb-8">
@@ -322,22 +413,28 @@ export default function ProductDetail() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                      disabled={quantity >= maxQuantity}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                   <span className="text-muted-foreground">
-                    {product.inStock ? (
+                    {availableStock > 0 ? (
                       <span className="flex items-center text-primary">
                         <Check className="h-4 w-4 mr-1" />
-                        In Stock
+                        {availableStock} in stock
                       </span>
                     ) : (
                       <span className="text-destructive">Out of Stock</span>
                     )}
                   </span>
                 </div>
+                {availableStock > 0 && quantity > availableStock && (
+                  <p className="text-xs text-destructive mt-2">
+                    Only {availableStock} available
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -347,7 +444,7 @@ export default function ProductDetail() {
                   size="xl"
                   className="flex-1"
                   onClick={handleAddToCart}
-                  disabled={!product.inStock}
+                  disabled={!selectedVariant || availableStock <= 0 || quantity <= 0}
                 >
                   <ShoppingBag className="h-5 w-5 mr-2" />
                   Add to Cart
