@@ -56,15 +56,21 @@ export default function ProductDetail() {
     setLoadingRemote(true);
     setRemoteError(null);
 
-    api.get(`/products/${id}/with-images`)
-      .then((res) => {
+    (async () => {
+      try {
+        // Fetch product with images
+        const productRes = await api.get(`/products/${id}/with-images`);
+        const p = productRes.data?.data || productRes.data;
+        
         if (!mounted) return;
-        const p = res.data?.data || res.data;
+        
         if (!p) {
           setRemoteError('Product not found');
+          setLoadingRemote(false);
           return;
         }
-        // Normalize backend product shape into the UI-friendly product object
+
+        // Normalize backend product
         const normalized: any = {
           id: String(p.id),
           name: p.name,
@@ -82,49 +88,58 @@ export default function ProductDetail() {
           rating: p.rating || 4.5,
           reviewCount: p.reviewCount || p.review_count || 0,
           inStock: (p.stock ?? p.quantity ?? 0) > 0,
-          // keep DB specific fields too
           quantity_ml: p.quantity_ml,
           quantity_unit: p.quantity_unit,
           brand: p.brand,
-          stock: p.stock,
+          stock: p.stock || 0,
         };
 
         setRemoteProduct(normalized);
 
         // Fetch variants for this product
-        return api.get(`/variants/product/${p.id}`);
-      })
-      .then((variantRes) => {
-        if (!mounted) return;
-        const variantData = variantRes?.data?.data || [];
-        setVariants(variantData);
-        
-        // Set first variant as selected
-        if (variantData.length > 0) {
-          setSelectedVariant(variantData[0]);
+        try {
+          const variantRes = await api.get(`/variants/product/${p.id}`);
+          if (!mounted) return;
+          
+          const variantData = variantRes?.data?.data || [];
+          setVariants(variantData);
+          
+          // Set first variant as selected
+          if (variantData.length > 0) {
+            setSelectedVariant(variantData[0]);
+          } else {
+            // No variants found - use product's base stock (NOT 0)
+            setSelectedVariant({
+              id: null,
+              product_id: p.id,
+              variant_name: `${p.quantity_ml || 100}${p.quantity_unit || 'ml'}`,
+              variant_value: p.quantity_ml || 100,
+              variant_unit: p.quantity_unit || 'ml',
+              price: p.price || 0,
+              stock: p.stock || 0 // Use actual product stock, not defaulting to 0
+            });
+          }
+        } catch (variantErr) {
+          if (!mounted) return;
+          // Variants endpoint might not exist or failed - use product's base stock
+          console.warn('Could not fetch variants, using product base stock:', p.stock);
+          setSelectedVariant({
+            id: null,
+            product_id: p.id,
+            variant_name: `${p.quantity_ml || 100}${p.quantity_unit || 'ml'}`,
+            variant_value: p.quantity_ml || 100,
+            variant_unit: p.quantity_unit || 'ml',
+            price: p.price || 0,
+            stock: p.stock || 0 // Use actual product stock
+          });
         }
-      })
-      .catch((err) => {
+      } catch (err: any) {
         if (!mounted) return;
-        // Log variant fetch error but don't fail - variants are optional
-        if (err?.response?.status !== 404) {
-          console.error('Error fetching variants:', err);
-        }
-        // Set default variant with product's base price/stock
-        const product = remoteProduct || {};
-        setSelectedVariant({
-          id: null,
-          product_id: product.id,
-          variant_name: `${product.quantity_ml || 100}${product.quantity_unit || 'ml'}`,
-          variant_value: product.quantity_ml || 100,
-          variant_unit: product.quantity_unit || 'ml',
-          price: product.price || 0,
-          stock: product.stock || 0
-        });
-      })
-      .finally(() => {
+        setRemoteError(err?.response?.data?.message || err.message || 'Failed to load product');
+      } finally {
         if (mounted) setLoadingRemote(false);
-      });
+      }
+    })();
 
     return () => {
       mounted = false;
@@ -150,19 +165,33 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
+    // Validation: Check if variant is selected
     if (!selectedVariant) {
       toast.error("Please select a variant");
       return;
     }
     
-    if (quantity <= 0 || quantity > availableStock) {
-      toast.error(`Invalid quantity. Available: ${availableStock}`);
+    // Validation: Check stock is available
+    if (availableStock <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
+    
+    // Validation: Check quantity is valid
+    if (quantity <= 0) {
+      toast.error("Please select a valid quantity");
+      return;
+    }
+    
+    if (quantity > availableStock) {
+      toast.error(`Only ${availableStock} item(s) available`);
       return;
     }
 
+    // Add to cart with selected quantity
     addItem(product, selectedVariant.variant_value, variantPrice, quantity);
     toast.success(`${product.name} added to cart!`, {
-      description: `${selectedVariant.variant_name} × ${quantity}`,
+      description: `${selectedVariant.variant_name} × ${quantity} | ₹${(variantPrice * quantity).toFixed(2)}`,
     });
   };
 
@@ -421,12 +450,25 @@ export default function ProductDetail() {
                   </div>
                   <span className="text-muted-foreground">
                     {availableStock > 0 ? (
-                      <span className="flex items-center text-primary">
-                        <Check className="h-4 w-4 mr-1" />
-                        {availableStock} in stock
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          availableStock > 10 
+                            ? 'bg-green-100 text-green-800' 
+                            : availableStock > 3
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          <Check className="h-3 w-3 mr-1" />
+                          {availableStock} available
+                        </span>
+                        {availableStock <= 3 && (
+                          <span className="text-xs text-destructive font-medium">Low stock!</span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-destructive">Out of Stock</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Out of Stock
+                      </span>
                     )}
                   </span>
                 </div>

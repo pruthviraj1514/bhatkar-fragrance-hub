@@ -93,6 +93,8 @@ export default function Products() {
   });
 
   const [images, setImages] = useState<ProductImage[]>([]);
+  const [variants, setEditVariants] = useState<any[]>([]);
+  const [newVariant, setNewVariant] = useState({ name: "", value: "", unit: "ml", price: "", stock: "" });
 
   // Redirect if not admin
   useEffect(() => {
@@ -135,8 +137,10 @@ export default function Products() {
         description: product.description,
         stock: product.stock.toString(),
       });
-      // Load existing images for product
+      // Load existing images and variants for product
       loadProductImages(product.id);
+      loadProductVariants(product.id);
+      setNewVariant({ name: "", value: "", unit: "ml", price: "", stock: "" });
     } else {
       setEditingId(null);
       setFormData({
@@ -151,6 +155,8 @@ export default function Products() {
         stock: "0",
       });
       setImages([]);
+      setEditVariants([]);
+      setNewVariant({ name: "", value: "", unit: "ml", price: "", stock: "" });
     }
     setIsOpen(true);
   };
@@ -173,6 +179,20 @@ export default function Products() {
     }
   };
 
+  const loadProductVariants = async (productId: number) => {
+    try {
+      const response = await api.get(`/variants/product/${productId}`);
+      if (response.data.data) {
+        setEditVariants(response.data.data);
+      } else {
+        setEditVariants([]);
+      }
+    } catch (err) {
+      console.error("Failed to load product variants:", err);
+      setEditVariants([]);
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsOpen(false);
     setEditingId(null);
@@ -188,6 +208,8 @@ export default function Products() {
       stock: "0",
     });
     setImages([]);
+    setEditVariants([]);
+    setNewVariant({ name: "", value: "", unit: "ml", price: "", stock: "" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -301,6 +323,48 @@ export default function Products() {
       await fetchProducts();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete product");
+    }
+  };
+
+  const handleAddVariant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingId) {
+      toast.error("Please save the product first before adding variants");
+      return;
+    }
+
+    if (!newVariant.name || !newVariant.value || !newVariant.price || !newVariant.stock) {
+      toast.error("Please fill all variant fields");
+      return;
+    }
+
+    try {
+      const response = await api.post(`/variants/product/${editingId}`, {
+        variant_name: newVariant.name,
+        variant_value: parseInt(newVariant.value),
+        variant_unit: newVariant.unit,
+        price: parseFloat(newVariant.price),
+        stock: parseInt(newVariant.stock)
+      });
+
+      await loadProductVariants(editingId);
+      setNewVariant({ name: "", value: "", unit: "ml", price: "", stock: "" });
+      toast.success("Variant added successfully!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to add variant");
+    }
+  };
+
+  const handleDeleteVariant = async (variantId: number) => {
+    if (!confirm("Delete this variant?")) return;
+
+    try {
+      await api.delete(`/variants/${variantId}`);
+      await loadProductVariants(editingId!);
+      toast.success("Variant deleted");
+    } catch (err: any) {
+      toast.error("Failed to delete variant");
     }
   };
 
@@ -638,6 +702,101 @@ export default function Products() {
                 )}
               </div>
             </div>
+
+            {/* Product Variants Management - Only when editing */}
+            {editingId && (
+              <div className="border-t pt-3">
+                <label className="text-xs font-semibold block mb-2 uppercase tracking-wide text-muted-foreground">
+                  Variants (ML / Size)
+                </label>
+
+                {/* Existing Variants List */}
+                {variants.length > 0 && (
+                  <div className="space-y-1 mb-3">
+                    <p className="text-xs text-muted-foreground mb-2">{variants.length} variant(s)</p>
+                    {variants.map((variant) => (
+                      <div
+                        key={variant.id}
+                        className="flex items-center justify-between p-2 bg-muted rounded border border-input text-xs"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{variant.variant_name}</p>
+                          <p className="text-muted-foreground">
+                            ₹{variant.price} | Stock: {variant.stock}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteVariant(variant.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add New Variant Form */}
+                <form onSubmit={handleAddVariant} className="space-y-2 p-2 bg-muted/30 rounded">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-medium block mb-1">Name</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., 100ml"
+                        value={newVariant.name}
+                        onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                        className="text-xs h-8"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1">Value</label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 100"
+                        value={newVariant.value}
+                        onChange={(e) => setNewVariant({ ...newVariant, value: e.target.value })}
+                        className="text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-medium block mb-1">Price</label>
+                      <Input
+                        type="number"
+                        placeholder="₹"
+                        step="0.01"
+                        value={newVariant.price}
+                        onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                        className="text-xs h-8"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1">Stock</label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={newVariant.stock}
+                        onChange={(e) => setNewVariant({ ...newVariant, stock: e.target.value })}
+                        className="text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="w-full text-xs h-8"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Variant
+                  </Button>
+                </form>
+              </div>
+            )}
             </form>
           </div>
 
