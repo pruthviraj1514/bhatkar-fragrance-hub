@@ -31,6 +31,7 @@ export default function ProductDetail() {
 
   const [remoteProduct, setRemoteProduct] = useState<any | null>(null);
   const [variants, setVariants] = useState<any[]>([]);
+  const [variantImages, setVariantImages] = useState<any[]>([]); // Variant-specific images
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
@@ -47,6 +48,9 @@ export default function ProductDetail() {
   const totalPrice = variantPrice * quantity;
   const availableStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const maxQuantity = Math.min(10, availableStock); // Max 10 or available stock, whichever is less
+  
+  // Display images: use variant-specific if available, else product images
+  const displayImages = variantImages.length > 0 ? variantImages.map(img => img.image_url) : product?.images || [];
 
   useEffect(() => {
     if (localProduct) return; // nothing to fetch
@@ -152,6 +156,36 @@ export default function ProductDetail() {
     };
   }, [id, localProduct]);
 
+  // Load variant-specific images when variant is selected
+  useEffect(() => {
+    if (!selectedVariant || !selectedVariant.id) {
+      setVariantImages([]);
+      setActiveImageIndex(0);
+      return;
+    }
+
+    let mounted = true;
+    
+    (async () => {
+      try {
+        const response = await api.get(`/variant-images/${selectedVariant.id}`);
+        if (!mounted) return;
+        
+        const images = response.data?.data || [];
+        setVariantImages(images);
+        setActiveImageIndex(0); // Reset to first image when variant changes
+      } catch (err) {
+        if (!mounted) return;
+        console.warn('Could not load variant-specific images, using product images');
+        setVariantImages([]);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedVariant?.id]);
+
   if (!product) {
     return (
       <Layout>
@@ -243,16 +277,16 @@ export default function ProductDetail() {
                 className="aspect-square rounded-xl overflow-hidden bg-secondary"
               >
                 <img
-                  src={product.images[activeImageIndex]}
+                  src={displayImages[activeImageIndex] || '/placeholder.svg'}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
               </motion.div>
 
               {/* Thumbnail Gallery */}
-              {product.images.length > 1 && (
+              {displayImages.length > 1 && (
                 <div className="flex gap-3">
-                  {product.images.map((image, index) => (
+                  {displayImages.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setActiveImageIndex(index)}
@@ -264,7 +298,7 @@ export default function ProductDetail() {
                       )}
                     >
                       <img
-                        src={image}
+                        src={image || '/placeholder.svg'}
                         alt={`${product.name} ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
