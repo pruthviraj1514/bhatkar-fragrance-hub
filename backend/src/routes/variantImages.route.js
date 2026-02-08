@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const variantImagesController = require('../controllers/variantImages.controller');
 const adminAuth = require('../middlewares/adminAuth');
-const asyncHandler = require('../middlewares/asyncHandler');
+const { asyncHandler } = require('../middlewares/asyncHandler');
 
 // Public endpoints
 // Get all images for a variant (used for product detail page image switching)
