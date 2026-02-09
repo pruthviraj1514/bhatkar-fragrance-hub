@@ -211,6 +211,7 @@ export default function Products() {
       concentration: "",
       description: "",
       stock: "0",
+      is_best_seller: false,
     });
     setImages([]);
     setEditVariants([]);
