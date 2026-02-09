@@ -11,7 +11,7 @@ interface Review {
   rating: number;
   review_text: string;
   verified_purchase: boolean;
-  created_on: string;
+  created_at: string;
 }
 
 interface ReviewStats {
@@ -268,7 +268,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDate(review.created_on)}
+                    {formatDate(review.created_at)}
                   </div>
                 </div>
                 <p className="text-sm text-foreground/80 mt-2">{review.review_text}</p>
