@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Edit2, Trash2, Loader, Upload, X, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +98,17 @@ export default function Products() {
   const [images, setImages] = useState<ProductImage[]>([]);
   const [variants, setEditVariants] = useState<any[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", value: "", unit: "ml", price: "", stock: "" });
+  const [selectedVariantForImages, setSelectedVariantForImages] = useState<number | null>(null);
+  const [variantImageFiles, setVariantImageFiles] = useState<File[]>([]);
+  const [isUploadingVariantImages, setIsUploadingVariantImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleVariantFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setVariantImageFiles(Array.from(files));
+    }
+  };
 
   // Redirect if not admin
   useEffect(() => {
@@ -415,6 +426,47 @@ export default function Products() {
       toast.success("Variant deleted");
     } catch (err: any) {
       toast.error("Failed to delete variant");
+    }
+  };
+
+  // Upload files for a specific variant: upload to Railway then save URLs to variant_images
+  const handleUploadVariantImages = async (variantId: number) => {
+    if (variantImageFiles.length === 0) {
+      toast.error("Please select at least one image to upload");
+      return;
+    }
+
+    if (!editingId) {
+      toast.error("Please save the product before uploading variant images");
+      return;
+    }
+
+    setIsUploadingVariantImages(true);
+    try {
+      const form = new FormData();
+      variantImageFiles.forEach((file) => form.append('images', file));
+
+      // Upload files to Railway (product-level upload endpoint)
+      const uploadResp = await api.post(`/images/upload/${editingId}`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const uploaded = uploadResp.data.data?.images || [];
+      if (uploaded.length === 0) throw new Error('No images returned from upload');
+
+      // Save uploaded URLs to variant_images via API
+      const imagesPayload = uploaded.map((img: any) => ({ image_url: img.image_url, alt_text: img.alt_text || 'Variant image' }));
+      await api.post(`/variants/${variantId}/images`, { images: imagesPayload });
+
+      await loadProductVariants(editingId);
+      setVariantImageFiles([]);
+      setSelectedVariantForImages(null);
+      toast.success('Variant images uploaded successfully');
+    } catch (err: any) {
+      console.error('Variant image upload failed:', err.response || err.message || err);
+      toast.error(err.response?.data?.message || err.message || 'Failed to upload variant images');
+    } finally {
+      setIsUploadingVariantImages(false);
     }
   };
 
@@ -813,17 +865,72 @@ export default function Products() {
                             ₹{variant.price} | Stock: {variant.stock}
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteVariant(variant.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedVariantForImages(variant.id);
+                              // open file picker
+                              if (fileInputRef.current) fileInputRef.current.click();
+                            }}
+                            className="h-6 px-2"
+                          >
+                            <Upload className="h-3 w-3" />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteVariant(variant.id)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
+
+                    {/* Hidden file input for variant uploads */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      ref={fileInputRef}
+                      onChange={handleVariantFileChange}
+                      style={{ display: 'none' }}
+                    />
+
+                    {/* Selected files preview & upload controls */}
+                    {selectedVariantForImages !== null && (
+                      <div className="mt-2 p-2 border border-input rounded bg-muted/50 text-xs">
+                        <p className="mb-2 font-medium">Selected files for variant:</p>
+                        {variantImageFiles.length === 0 ? (
+                          <p className="text-muted-foreground">No files selected</p>
+                        ) : (
+                          <div className="space-y-1 mb-2">
+                            {variantImageFiles.map((f, i) => (
+                              <div key={i} className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="truncate mr-2">{f.name}</span>
+                                <span className="text-muted-foreground text-xs">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => {
+                            if (selectedVariantForImages) handleUploadVariantImages(selectedVariantForImages);
+                          }} disabled={isUploadingVariantImages}>
+                            {isUploadingVariantImages ? 'Uploading...' : 'Upload to Variant'}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setVariantImageFiles([]); setSelectedVariantForImages(null); }}>
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
