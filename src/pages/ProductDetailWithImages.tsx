@@ -10,6 +10,7 @@ import {
   Minus,
   Plus,
   Check,
+  Star,
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,24 @@ interface ProductImage {
   is_thumbnail: boolean;
 }
 
+interface FeaturedReview {
+  id: number;
+  reviewer_name: string;
+  rating: number;
+  review_text: string;
+  verified_purchase?: boolean;
+}
+
+interface ProductVariant {
+  id: number;
+  product_id: number;
+  ml: number;
+  unit: string;
+  price: number;
+  stock: number;
+  images?: ProductImage[];
+}
+
 interface Product {
   id: number;
   name: string;
@@ -41,6 +60,8 @@ interface Product {
   description: string;
   stock: number;
   images: ProductImage[];
+  is_best_seller?: boolean;
+  variants?: ProductVariant[];
   created_on: string;
 }
 
@@ -52,6 +73,11 @@ export default function ProductDetailWithImages() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [featuredReviews, setFeaturedReviews] = useState<FeaturedReview[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [currentPrice, setCurrentPrice] = useState(0);
+  const [currentStock, setCurrentStock] = useState(0);
+  const [currentImages, setCurrentImages] = useState<ProductImage[]>([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -59,6 +85,30 @@ export default function ProductDetailWithImages() {
         setLoading(true);
         const response = await api.get(`/products/${id}/with-images`);
         setProduct(response.data.data);
+        setCurrentPrice(response.data.data.price);
+        setCurrentStock(response.data.data.stock);
+        setCurrentImages(response.data.data.images || []);
+
+        // Fetch featured reviews
+        try {
+          const reviewsResponse = await api.get(`/reviews/product/${id}/featured`);
+          setFeaturedReviews(reviewsResponse.data.data || []);
+        } catch (err) {
+          console.log("No reviews available for this product");
+        }
+
+        // Load variants if available
+        try {
+          const variantsResponse = await api.get(`/variants/product/${id}`);
+          const variants = variantsResponse.data.data || [];
+          if (variants.length > 0) {
+            setSelectedVariant(variants[0]);
+            setCurrentPrice(variants[0].price);
+            setCurrentStock(variants[0].stock);
+          }
+        } catch (err) {
+          console.log("No variants available for this product");
+        }
       } catch (error: any) {
         toast.error(error.response?.data?.message || "Failed to load product");
       } finally {
@@ -112,11 +162,25 @@ export default function ProductDetailWithImages() {
       return;
     }
 
-    addItem(product as any, quantity, product.price);
+    addItem(product as any, quantity, currentPrice);
     toast.success(`${product.name} added to cart!`, {
       description: `Quantity: ${quantity}`,
     });
     setQuantity(1);
+  };
+
+  const handleVariantChange = (variant: ProductVariant) => {
+    setSelectedVariant(variant);
+    setCurrentPrice(variant.price);
+    setCurrentStock(variant.stock);
+    setQuantity(1); // Reset quantity when changing variant
+    
+    // Update images if variant has ML-specific images
+    if (variant.images && variant.images.length > 0) {
+      setCurrentImages(variant.images);
+    } else if (product?.images) {
+      setCurrentImages(product.images);
+    }
   };
 
   const handleWishlist = () => {
@@ -156,7 +220,7 @@ export default function ProductDetailWithImages() {
             {/* Product Image Carousel */}
             <div className="flex flex-col">
               <ProductImageCarousel
-                images={product.images || []}
+                images={currentImages || []}
                 productName={product.name}
                 className="mb-6"
               />
@@ -174,14 +238,19 @@ export default function ProductDetailWithImages() {
                 <p className="text-lg text-gray-600">{product.brand}</p>
 
                 {/* Category & Type */}
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  {product.is_best_seller && (
+                    <Badge className="bg-yellow-100 text-yellow-900">
+                      ⭐ Best Seller
+                    </Badge>
+                  )}
                   <Badge className="bg-blue-100 text-blue-900">
                     {product.category}
                   </Badge>
                   <Badge className="bg-purple-100 text-purple-900">
                     {product.concentration}
                   </Badge>
-                  {product.stock > 0 && (
+                  {currentStock > 0 && (
                     <Badge className="bg-green-100 text-green-900">
                       In Stock
                     </Badge>
@@ -189,10 +258,36 @@ export default function ProductDetailWithImages() {
                 </div>
               </div>
 
+              {/* ML/Variants Selector */}
+              {product.variants && product.variants.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Size: {selectedVariant?.ml}
+                    {selectedVariant?.unit}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {product.variants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        onClick={() => handleVariantChange(variant)}
+                        className={`p-3 border-2 rounded-lg transition font-medium ${
+                          selectedVariant?.id === variant.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-input hover:border-primary"
+                        }`}
+                      >
+                        {variant.ml}
+                        {variant.unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Price */}
               <div>
                 <p className="text-3xl font-bold text-gray-900">
-                  ${formatPrice(product.price)}
+                  ₹{formatPrice(currentPrice)}
                 </p>
               </div>
 
@@ -241,10 +336,10 @@ export default function ProductDetailWithImages() {
                   </span>
                   <button
                     onClick={() =>
-                      setQuantity(Math.min(product.stock, quantity + 1))
+                      setQuantity(Math.min(currentStock, quantity + 1))
                     }
                     className="p-2 hover:bg-gray-200 rounded-lg transition"
-                    disabled={quantity >= product.stock}
+                    disabled={quantity >= currentStock}
                   >
                     <Plus className="h-5 w-5" />
                   </button>
@@ -255,12 +350,12 @@ export default function ProductDetailWithImages() {
               <div className="flex gap-4 pt-4">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0}
+                  disabled={currentStock === 0}
                   className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-6"
                   size="lg"
                 >
                   <ShoppingBag className="mr-2 h-5 w-5" />
-                  {product.stock > 0 ? "Add to Cart" : "Out of Stock"}
+                  {currentStock > 0 ? "Add to Cart" : "Out of Stock"}
                 </Button>
                 <Button
                   onClick={handleWishlist}
@@ -312,6 +407,57 @@ export default function ProductDetailWithImages() {
           </div>
         </div>
       </section>
+
+      {/* Featured Reviews Section */}
+      {featuredReviews.length > 0 && (
+        <section className="py-12 bg-gray-50">
+          <div className="container px-4">
+            <h2 className="text-3xl font-bold mb-8">Customer Reviews</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredReviews.map((review) => (
+                <motion.div
+                  key={review.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="bg-white rounded-lg p-6 shadow-sm border border-gray-200"
+                >
+                  {/* Rating Stars */}
+                  <div className="flex gap-1 mb-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < review.rating
+                            ? "fill-orange-400 text-orange-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Review Text */}
+                  <p className="text-gray-700 mb-4 leading-relaxed">
+                    "{review.review_text}"
+                  </p>
+
+                  {/* Reviewer Info */}
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <span className="font-semibold text-gray-900">
+                      {review.reviewer_name}
+                    </span>
+                    {review.verified_purchase && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        ✓ Verified Purchase
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </Layout>
   );
 }
