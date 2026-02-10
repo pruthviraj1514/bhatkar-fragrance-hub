@@ -26,6 +26,7 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Helper to build full URL for images (prefix API base if relative path)
   const apiBase = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '') : '';
@@ -61,6 +62,11 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
     }
   }, [sortedImages]);
 
+  // Reset image loaded state when selected image changes
+  React.useEffect(() => {
+    setImageLoaded(false);
+  }, [selectedImageIndex, sortedImages]);
+
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollContainerRef.current) return;
 
@@ -91,15 +97,23 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
   }
 
   return (
-    <div className={`product-image-carousel ${className}`}>
+      <div className={`product-image-carousel ${className}`}>
       {/* Main Image Display */}
       <div className="main-image-container">
+        {!imageLoaded && (
+          <div className="main-image-skeleton" aria-hidden="true">
+            <div className="skeleton-box" />
+          </div>
+        )}
+
         <img
           src={buildImageUrl(sortedImages[selectedImageIndex].image_url)}
           alt={sortedImages[selectedImageIndex].alt_text}
-          className="main-image"
+          className={`main-image ${imageLoaded ? 'loaded' : 'loading'}`}
+          onLoad={() => setImageLoaded(true)}
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/500x500?text=Product+Image';
+            setImageLoaded(true);
           }}
         />
         
