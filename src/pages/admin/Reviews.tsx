@@ -327,14 +327,30 @@ export default function AdminReviews() {
                               )}
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
+                          <div className="flex gap-2 items-center">
+                            <Button
+                              variant={review.is_featured ? "secondary" : "outline"}
+                              size="sm"
+                              onClick={() => handleToggleFeatured(review.id, !review.is_featured)}
+                            >
+                              {review.is_featured ? "⭐ Unfeature" : "☆ Feature"}
+                            </Button>
+                            <Button
+                              variant={review.is_active ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleToggleActive(review.id, !review.is_active)}
+                            >
+                              {review.is_active ? "Disable" : "Enable"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-sm text-foreground/80 mt-2">{review.review_text}</p>
                         <p className="text-xs text-muted-foreground mt-2">

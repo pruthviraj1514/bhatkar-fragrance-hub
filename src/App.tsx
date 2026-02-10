@@ -96,15 +96,14 @@ const App = () => (
                   element={
                     <ProtectedRoute requiredRole="admin">
                       <AdminProductImageManager />
-
-                                    <Route
-                                      path="/admin/reviews"
-                                      element={
-                                        <ProtectedRoute requiredRole="admin">
-                                          <AdminReviews />
-                                        </ProtectedRoute>
-                                      }
-                                    />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/reviews"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminReviews />
                     </ProtectedRoute>
                   }
                 />

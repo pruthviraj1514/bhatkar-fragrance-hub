@@ -48,7 +48,7 @@ exports.getProductById = async (req, res) => {
 // Create product
 exports.createProduct = async (req, res) => {
     try {
-        const { name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller } = req.body;
+        const { name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller, is_active } = req.body;
 
         // Validate required fields
         if (!name || !brand || !price || !category || !concentration) {
@@ -58,7 +58,7 @@ exports.createProduct = async (req, res) => {
             });
         }
 
-        const product = new Product(name, brand, price, quantity_ml || 100, quantity_unit || 'ml', category, concentration, description, stock || 0, is_best_seller || false);
+        const product = new Product(name, brand, price, quantity_ml || 100, quantity_unit || 'ml', category, concentration, description, stock || 0, is_best_seller || false, is_active !== undefined ? is_active : 0);
         const data = await Product.create(product);
         logger.info(`Product created: ${data.id}`);
         return res.status(201).send({

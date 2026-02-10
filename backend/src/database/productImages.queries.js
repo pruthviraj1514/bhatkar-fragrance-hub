@@ -31,7 +31,7 @@ ORDER BY image_order ASC
 const getProductWithImages = `
 SELECT 
   p.id, p.name, p.brand, p.price, p.category, p.concentration, 
-  p.description, p.stock, p.created_on,
+  p.description, p.stock, p.created_on, p.is_best_seller, p.is_active,
   JSON_ARRAYAGG(
     JSON_OBJECT(
       'id', pi.id,
@@ -51,7 +51,7 @@ GROUP BY p.id
 const getAllProductsWithImages = `
 SELECT 
   p.id, p.name, p.brand, p.price, p.category, p.concentration, 
-  p.description, p.stock, p.created_on,
+  p.description, p.stock, p.created_on, p.is_best_seller, p.is_active,
   JSON_ARRAYAGG(
     JSON_OBJECT(
       'id', pi.id,
