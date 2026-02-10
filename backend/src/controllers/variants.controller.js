@@ -1,4 +1,4 @@
-const db = require('../database/db');
+const db = require('../config/db.config');
 const { logger } = require('../utils/logger');
 
 /**
