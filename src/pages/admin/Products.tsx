@@ -388,7 +388,9 @@ export default function Products() {
     }
 
     try {
-      const response = await api.post(`/variants/product/${editingId}`, {
+      // Backend expects POST /variants with productId in body (admin route)
+      const response = await api.post(`/variants`, {
+        productId: editingId,
         variant_name: newVariant.name,
         variant_value: parseInt(newVariant.value),
         variant_unit: newVariant.unit,
