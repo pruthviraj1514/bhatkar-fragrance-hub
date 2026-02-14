@@ -178,7 +178,6 @@ export default function Cart() {
                 </div>
 
                 <div className="mt-4 rounded-md bg-muted p-2 sm:p-3 text-xs text-muted-foreground space-y-1">
-                  <div>✓ Free shipping on orders over $100</div>
                   <div>✓ 100% authentic products</div>
                   <div>✓ Easy returns</div>
                 </div>

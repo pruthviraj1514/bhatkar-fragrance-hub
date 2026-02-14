@@ -95,7 +95,6 @@ export function WhyUsSection() {
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
             {[
               "100% Authentic Products",
-              "Free Shipping Above ₹999",
               "30-Day Returns",
               "Secure Payments",
             ].map((badge) => (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "@/lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,13 +6,13 @@ import {
   Star,
   Heart,
   ShoppingBag,
-  Truck,
   RotateCcw,
   Shield,
   ChevronRight,
   Minus,
   Plus,
   Check,
+  ChevronLeft,
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,8 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [thumbnailScrollPosition, setThumbnailScrollPosition] = useState(0);
+  const thumbnailScrollRef: any = useRef(null);
 
   // Calculate total price and available stock
   const variantPrice = selectedVariant?.price ?? product?.price ?? 0;
@@ -275,44 +277,85 @@ export default function ProductDetail() {
       <section className="py-12">
         <div className="container px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-            {/* Image Gallery - takes 1 column on mobile, 1 on tablet, 1 on desktop */}
-            <div className="md:col-span-1 lg:col-span-1 space-y-4 flex flex-col items-center md:items-start">
+            {/* Image Gallery - Professional container with constrained width */}
+            <div className="md:col-span-1 lg:col-span-1 flex flex-col items-center md:items-start space-y-4">
+              {/* Main Image - Constrained, Professional sizing */}
               <motion.div
                 key={activeImageIndex}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
-                className="w-full aspect-square rounded-xl overflow-hidden bg-secondary flex items-center justify-center"
+                className="w-full max-w-md aspect-square rounded-lg overflow-hidden bg-secondary/50 flex items-center justify-center border border-border/50 shadow-sm"
               >
                 <img
                   src={displayImages[activeImageIndex] || '/placeholder.svg'}
                   alt={product.name}
-                  className="w-full h-full object-contain p-2 md:p-4"
+                  className="w-full h-full object-contain p-3 md:p-6"
                 />
               </motion.div>
 
-              {/* Thumbnail Gallery - Horizontal Scroll */}
+              {/* Thumbnail Gallery - Amazon-style left-to-right scroll */}
               {displayImages.length > 1 && (
-                <div className="w-full md:w-auto overflow-x-auto md:overflow-visible">
-                  <div className="flex gap-3 pb-2 md:pb-0">
-                    {displayImages.map((image, index) => (
+                <div className="w-full max-w-md">
+                  <div className="relative flex items-center gap-2">
+                    {/* Left Arrow */}
+                    {thumbnailScrollPosition > 0 && (
                       <button
-                        key={index}
-                        onClick={() => setActiveImageIndex(index)}
-                        className={cn(
-                          "min-w-16 md:min-w-20 w-16 md:w-20 h-16 md:h-20 rounded-lg overflow-hidden border-2 transition-colors flex-shrink-0",
-                          activeImageIndex === index
-                            ? "border-primary"
-                            : "border-transparent hover:border-muted-foreground"
-                        )}
+                        onClick={() => {
+                          if (thumbnailScrollRef.current) {
+                            thumbnailScrollRef.current.scrollBy({ left: -80, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute left-0 z-10 p-1.5 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition"
+                        aria-label="Scroll thumbnails left"
                       >
-                        <img
-                          src={image || '/placeholder.svg'}
-                          alt={`${product.name} ${index + 1}`}
-                          className="w-full h-full object-contain p-1"
-                        />
+                        <ChevronLeft className="h-4 w-4" />
                       </button>
-                    ))}
+                    )}
+
+                    {/* Right Arrow */}
+                    {displayImages.length > 4 && (
+                      <button
+                        onClick={() => {
+                          if (thumbnailScrollRef.current) {
+                            thumbnailScrollRef.current.scrollBy({ left: 80, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute right-0 z-10 p-1.5 bg-background/90 backdrop-blur-sm rounded-full border border-border hover:bg-background transition"
+                        aria-label="Scroll thumbnails right"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* Thumbnails Container */}
+                    <div
+                      ref={thumbnailScrollRef}
+                      onScroll={(e) => {
+                        setThumbnailScrollPosition((e.target as HTMLDivElement).scrollLeft);
+                      }}
+                      className="flex gap-2 overflow-x-auto scroll-smooth px-8 md:px-0 w-full no-scrollbar"
+                      style={{ scrollBehavior: 'smooth' }}
+                    >
+                      {displayImages.map((image, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setActiveImageIndex(index)}
+                          className={cn(
+                            "min-w-16 md:min-w-20 w-16 md:w-20 h-16 md:h-20 rounded-md overflow-hidden border-2 transition-all flex-shrink-0 hover:border-primary/70",
+                            activeImageIndex === index
+                              ? "border-primary shadow-md"
+                              : "border-border/50"
+                          )}
+                        >
+                          <img
+                            src={image || '/placeholder.svg'}
+                            alt={`${product.name} ${index + 1}`}
+                            className="w-full h-full object-contain p-1 bg-secondary/20"
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -352,6 +395,11 @@ export default function ProductDetail() {
                     ⭐ Best Seller
                   </Badge>
                 )}
+                {product.is_luxury_product && (
+                  <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200 text-base px-3 py-1 flex items-center gap-1">
+                    💎 Luxury
+                  </Badge>
+                )}
               </div>
 
               {/* Net Quantity / Size display similar to mobile screenshot */}
@@ -386,28 +434,75 @@ export default function ProductDetail() {
                 </span>
               </div>
 
-              {/* Price - Show unit price and total price */}
-              <div className="mb-8">
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-3xl font-bold text-primary">
-                    {formatPrice(totalPrice)}
-                  </span>
-                  {quantity > 1 && (
-                    <span className="text-sm text-muted-foreground">
-                      ({formatPrice(variantPrice)} × {quantity})
-                    </span>
+              {/* Price - Detailed pricing with original, discount, shipping, and total */}
+              <div className="mb-8 p-4 bg-secondary/30 rounded-lg border border-border/50">
+                {/* Original Price & Discount */}
+                <div className="space-y-2 mb-4">
+                  {product.original_price && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground line-through">
+                        Original: {formatPrice(product.original_price)}
+                      </span>
+                      {product.discount_percentage > 0 && (
+                        <span className="px-2 py-1 bg-destructive text-destructive-foreground text-xs font-semibold rounded">
+                          {Math.round(product.discount_percentage)}% OFF
+                        </span>
+                      )}
+                    </div>
                   )}
-                  {product.originalPrice && (
-                    <span className="text-xl text-muted-foreground line-through">
-                      {formatPrice(product.originalPrice)}
+                  
+                  {/* Selling Price */}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-primary">
+                      {formatPrice(variantPrice)}
                     </span>
-                  )}
+                    <span className="text-xs text-muted-foreground">per unit</span>
+                  </div>
                 </div>
-                {quantity > 1 && (
-                  <p className="text-xs text-muted-foreground">
-                    Unit price: {formatPrice(variantPrice)}
-                  </p>
+
+                {/* Shipping & Additional Charges */}
+                {(product.shipping_cost > 0 || product.other_charges > 0) && (
+                  <div className="space-y-1 py-3 border-t border-b border-border/50 text-xs">
+                    {product.shipping_cost > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Shipping Cost:</span>
+                        <span>+ {formatPrice(product.shipping_cost)}</span>
+                      </div>
+                    )}
+                    {product.other_charges > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Other Charges:</span>
+                        <span>+ {formatPrice(product.other_charges)}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
+
+                {/* Quantity & Total */}
+                <div className="pt-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {quantity > 1 && `${quantity} × ${formatPrice(variantPrice)}`}
+                    </span>
+                    {quantity > 1 && (
+                      <span className="font-medium">{formatPrice(variantPrice * quantity)}</span>
+                    )}
+                  </div>
+                  {(product.shipping_cost > 0 || product.other_charges > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Additional Charges:</span>
+                      <span className="font-medium">+ {formatPrice((product.shipping_cost + product.other_charges) * quantity)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-border/50 pt-2">
+                    <span className="font-semibold">Final Total:</span>
+                    <span className="text-lg font-bold text-primary">
+                      {formatPrice(
+                        (variantPrice + product.shipping_cost + product.other_charges) * quantity
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Description */}
@@ -561,9 +656,8 @@ export default function ProductDetail() {
               </div>
 
               {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-4 py-6 border-t border-b border-border">
+              <div className="grid grid-cols-2 gap-4 py-6 border-t border-b border-border">
                 {[
-                  { icon: Truck, label: "Free Shipping", desc: "Above ₹999" },
                   { icon: RotateCcw, label: "Easy Returns", desc: "30 Days" },
                   { icon: Shield, label: "100% Authentic", desc: "Guaranteed" },
                 ].map((badge) => (

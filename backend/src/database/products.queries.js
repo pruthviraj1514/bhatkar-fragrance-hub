@@ -4,6 +4,10 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(255) NOT NULL,
     brand VARCHAR(100) NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
+    original_price DECIMAL(10, 2),
+    discount_percentage DECIMAL(5, 2) DEFAULT 0,
+    shipping_cost DECIMAL(10, 2) DEFAULT 0,
+    other_charges DECIMAL(10, 2) DEFAULT 0,
     quantity_ml INT DEFAULT 100,
     quantity_unit VARCHAR(10) DEFAULT 'ml',
     category ENUM('Men', 'Women', 'Unisex') NOT NULL,
@@ -19,8 +23,8 @@ CREATE TABLE IF NOT EXISTS products (
 `;
 
 const createProduct = `
-INSERT INTO products (name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller, is_luxury_product, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO products (name, brand, price, original_price, discount_percentage, shipping_cost, other_charges, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller, is_luxury_product, is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 const getAllProducts = `
@@ -33,7 +37,7 @@ SELECT * FROM products WHERE id = ?
 
 const updateProduct = `
 UPDATE products 
-SET name = ?, brand = ?, price = ?, quantity_ml = ?, quantity_unit = ?, category = ?, concentration = ?, description = ?, stock = ?, is_best_seller = ?, is_luxury_product = ?, is_active = ?
+SET name = ?, brand = ?, price = ?, original_price = ?, discount_percentage = ?, shipping_cost = ?, other_charges = ?, quantity_ml = ?, quantity_unit = ?, category = ?, concentration = ?, description = ?, stock = ?, is_best_seller = ?, is_luxury_product = ?, is_active = ?
 WHERE id = ?
 `;
 

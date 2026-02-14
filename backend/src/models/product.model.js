@@ -11,14 +11,22 @@ const { logger } = require('../utils/logger');
 // Helper function to convert DECIMAL price to number
 const convertProduct = (product) => ({
     ...product,
-    price: parseFloat(product.price)
+    price: parseFloat(product.price),
+    original_price: product.original_price ? parseFloat(product.original_price) : null,
+    discount_percentage: parseFloat(product.discount_percentage || 0),
+    shipping_cost: parseFloat(product.shipping_cost || 0),
+    other_charges: parseFloat(product.other_charges || 0)
 });
 
 class Product {
-    constructor(name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller = false, is_luxury_product = false, is_active = 0) {
+    constructor(name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller = false, is_luxury_product = false, is_active = 0, original_price = null, discount_percentage = 0, shipping_cost = 0, other_charges = 0) {
         this.name = name;
         this.brand = brand;
         this.price = price;
+        this.original_price = original_price;
+        this.discount_percentage = discount_percentage;
+        this.shipping_cost = shipping_cost;
+        this.other_charges = other_charges;
         this.quantity_ml = quantity_ml;
         this.quantity_unit = quantity_unit;
         this.category = category;
@@ -37,6 +45,10 @@ class Product {
                     newProduct.name,
                     newProduct.brand,
                     newProduct.price,
+                    newProduct.original_price || null,
+                    newProduct.discount_percentage || 0,
+                    newProduct.shipping_cost || 0,
+                    newProduct.other_charges || 0,
                     newProduct.quantity_ml,
                     newProduct.quantity_unit,
                     newProduct.category,
@@ -88,6 +100,10 @@ class Product {
                     updatedProduct.name,
                     updatedProduct.brand,
                     updatedProduct.price,
+                    updatedProduct.original_price || null,
+                    updatedProduct.discount_percentage || 0,
+                    updatedProduct.shipping_cost || 0,
+                    updatedProduct.other_charges || 0,
                     updatedProduct.quantity_ml,
                     updatedProduct.quantity_unit,
                     updatedProduct.category,

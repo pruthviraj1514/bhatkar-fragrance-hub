@@ -56,6 +56,10 @@ interface FormData {
   name: string;
   brand: string;
   price: string;
+  original_price: string;
+  discount_percentage: string;
+  shipping_cost: string;
+  other_charges: string;
   quantity_ml: string;
   quantity_unit: string;
   category: "Men" | "Women" | "Unisex" | "";
@@ -94,6 +98,10 @@ export default function Products() {
     name: "",
     brand: "",
     price: "",
+    original_price: "",
+    discount_percentage: "",
+    shipping_cost: "0",
+    other_charges: "0",
     quantity_ml: "100",
     quantity_unit: "ml",
     category: "",
@@ -157,6 +165,10 @@ export default function Products() {
         name: product.name,
         brand: product.brand,
         price: product.price.toString(),
+        original_price: (product as any).original_price ? (product as any).original_price.toString() : "",
+        discount_percentage: (product as any).discount_percentage ? (product as any).discount_percentage.toString() : "",
+        shipping_cost: (product as any).shipping_cost ? (product as any).shipping_cost.toString() : "0",
+        other_charges: (product as any).other_charges ? (product as any).other_charges.toString() : "0",
         quantity_ml: product.quantity_ml.toString(),
         quantity_unit: product.quantity_unit,
         category: product.category,
@@ -178,6 +190,10 @@ export default function Products() {
         name: "",
         brand: "",
         price: "",
+        original_price: "",
+        discount_percentage: "",
+        shipping_cost: "0",
+        other_charges: "0",
         quantity_ml: "100",
         quantity_unit: "ml",
         category: "",
@@ -235,6 +251,10 @@ export default function Products() {
       name: "",
       brand: "",
       price: "",
+      original_price: "",
+      discount_percentage: "",
+      shipping_cost: "0",
+      other_charges: "0",
       quantity_ml: "100",
       quantity_unit: "ml",
       category: "",
@@ -268,6 +288,10 @@ export default function Products() {
         name: formData.name,
         brand: formData.brand,
         price: parseFloat(formData.price),
+        original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+        discount_percentage: formData.discount_percentage ? parseFloat(formData.discount_percentage) : 0,
+        shipping_cost: formData.shipping_cost ? parseFloat(formData.shipping_cost) : 0,
+        other_charges: formData.other_charges ? parseFloat(formData.other_charges) : 0,
         quantity_ml: parseInt(formData.quantity_ml) || 100,
         quantity_unit: formData.quantity_unit || 'ml',
         category: formData.category,
@@ -740,6 +764,67 @@ export default function Products() {
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Pricing Details Section */}
+            <div className="border-t pt-3 mt-3">
+              <label className="text-xs font-semibold block mb-3 uppercase tracking-wide text-muted-foreground">
+                Pricing Details (Optional)
+              </label>
+              
+              {/* Original Price */}
+              <div className="mb-3">
+                <label className="text-sm font-medium block mb-1">Original Price (MRP)</label>
+                <Input
+                  type="number"
+                  placeholder="Original/list price"
+                  step="0.01"
+                  value={formData.original_price}
+                  onChange={(e) => setFormData({ ...formData, original_price: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Discount Percentage */}
+              <div className="mb-3">
+                <label className="text-sm font-medium block mb-1">Discount Percentage (%)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={formData.discount_percentage}
+                  onChange={(e) => setFormData({ ...formData, discount_percentage: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Shipping Cost */}
+              <div className="mb-3">
+                <label className="text-sm font-medium block mb-1">Shipping Cost</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  step="0.01"
+                  value={formData.shipping_cost}
+                  onChange={(e) => setFormData({ ...formData, shipping_cost: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Other Charges */}
+              <div className="mb-3">
+                <label className="text-sm font-medium block mb-1">Other Charges</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  step="0.01"
+                  value={formData.other_charges}
+                  onChange={(e) => setFormData({ ...formData, other_charges: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
             </div>
 
             {/* Quantity */}
