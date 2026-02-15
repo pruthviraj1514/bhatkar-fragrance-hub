@@ -8,7 +8,7 @@ console.log(`🔗 API Base URL: ${baseURL}`);
 
 const api = axios.create({
   baseURL,
-  timeout: 30000, // 30 second timeout
+  timeout: 15000, // 15 second timeout (was 30s - backend cold start finishes in 15s)
   withCredentials: false,
 });
 
@@ -32,6 +32,8 @@ api.interceptors.request.use(
       "/variants",
       "/reviews",
       "/images",
+      "/payment/create-order",  // ✅ Payment creation is public (customers pay)
+      "/payment/verify",        // ✅ Payment verification needs signature, not auth
     ];
     
     const isPublicEndpoint = publicEndpoints.some(endpoint => 
