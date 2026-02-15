@@ -9,6 +9,8 @@ exports.getProductVariants = async (req, res) => {
   try {
     const { productId } = req.params;
 
+    logger.info(`📦 Fetching variants for product: ${productId}`);
+
     const [variants] = await db.query(
       `SELECT * FROM product_variants 
        WHERE product_id = ? AND is_active = 1 
@@ -16,20 +18,30 @@ exports.getProductVariants = async (req, res) => {
       [productId]
     );
 
+    logger.info(`✅ Found ${variants.length} variants for product ${productId}`);
+
     // Get images for each variant
     const variantsWithImages = await Promise.all(
       variants.map(async (variant) => {
-        const [images] = await db.query(
-          `SELECT id, image_url, alt_text, image_order, is_thumbnail 
-           FROM variant_images 
-           WHERE variant_id = ? 
-           ORDER BY image_order ASC`,
-          [variant.id]
-        );
-        return {
-          ...variant,
-          images: images || [],
-        };
+        try {
+          const [images] = await db.query(
+            `SELECT id, image_url, alt_text, image_order, is_thumbnail 
+             FROM variant_images 
+             WHERE variant_id = ? 
+             ORDER BY image_order ASC`,
+            [variant.id]
+          );
+          return {
+            ...variant,
+            images: images || [],
+          };
+        } catch (imgError) {
+          logger.warn(`Could not fetch images for variant ${variant.id}: ${imgError.message}`);
+          return {
+            ...variant,
+            images: [],
+          };
+        }
       })
     );
 
@@ -38,10 +50,13 @@ exports.getProductVariants = async (req, res) => {
       data: variantsWithImages,
     });
   } catch (error) {
-    logger.error(`Error fetching variants: ${error.message}`);
+    logger.error(`❌ Error fetching variants for product ${req.params.productId}: ${error.message}`);
+    logger.error(`Error stack: ${error.stack}`);
+    
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch variants',
+      error: error.message,
     });
   }
 };
