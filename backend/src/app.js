@@ -77,23 +77,78 @@ app.get("/", (req, res) => {
   });
 });
 
+// ===== DEBUG MIDDLEWARE - Log all incoming requests =====
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.path}`);
+  next();
+});
+
 // ===== API ROUTES =====
+console.log('\n🚀 REGISTERING API ROUTES:');
+console.log('   ✅ POST /api/auth/* → authRoute');
 app.use("/api/auth", authRoute);
+
+console.log('   ✅ POST /api/admin/* → adminRoute');
 app.use("/api/admin", adminRoute);
+
+console.log('   ✅ GET /api/products/* → productRoute');
 app.use("/api/products", productRoute);
+
+console.log('   ✅ GET /api/variants/* → variantRoute');
 app.use("/api/variants", variantRoute);
+
+console.log('   ✅ GET /api/reviews/* → reviewsRoute');
 app.use("/api/reviews", reviewsRoute);
+
+console.log('   ✅ POST /api/orders/* → orderRoute');
 app.use("/api/orders", orderRoute);
+
+console.log('   ✅ POST /api/upload-image/* → uploadRoute');
 app.use("/api/upload-image", uploadRoute);
+
+console.log('   ✅ GET /api/images/* → imageRoute');
 app.use("/api/images", imageRoute);
+
+console.log('   ✅ POST /api/payment/* → paymentRoute');
+console.log(`       ├─ GET /health → Payment health check`);
+console.log(`       ├─ POST /create-order → Create payment order`);
+console.log(`       ├─ POST /verify → Verify payment`);
+console.log(`       ├─ POST /webhook → Razorpay webhook`);
+console.log(`       ├─ GET /order/:orderId → Get order`);
+console.log(`       └─ GET /payment/:paymentId → Get payment`);
 app.use("/api/payment", paymentRoute);
+
+console.log('\n✨ All routes registered successfully!\n');
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {
+  const availableRoutes = [
+    'GET  /health',
+    'GET  /',
+    'GET  /health',
+    'POST /api/auth/signin',
+    'POST /api/auth/signup',
+    'GET  /api/products/with-images/all',
+    'GET  /api/products/:id',
+    'POST /api/payment/health',
+    'POST /api/payment/create-order',
+    'POST /api/payment/verify',
+    'POST /api/payment/webhook',
+    'GET  /api/payment/order/:orderId',
+  ];
+
+  console.error(`❌ 404 ERROR: ${req.method} ${req.path} not found`);
+  
   res.status(404).json({
     status: "error",
     message: `Route ${req.method} ${req.path} not found`,
-    timestamp: new Date().toISOString()
+    hint: "Try GET /api/payment/health to verify payment routes are loaded",
+    timestamp: new Date().toISOString(),
+    availablePaymentRoutes: [
+      'GET /api/payment/health',
+      'POST /api/payment/create-order',
+      'POST /api/payment/verify',
+    ]
   });
 });
 
