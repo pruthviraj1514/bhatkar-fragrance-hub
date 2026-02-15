@@ -2,12 +2,16 @@
  * Payment Routes
  * ==============
  * API endpoints for Razorpay payment integration
+ * 
+ * IMPORTANT: Webhook route uses express.raw() to preserve raw body
+ * for signature verification (must be applied before express.json())
  */
 
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const { adminAuth } = require('../middlewares/adminAuth');
+const { captureRawBody, attachRawBody } = require('../middlewares/webhookMiddleware');
 
 /**
  * Public Routes
@@ -33,6 +37,10 @@ router.get('/payment/:paymentId', adminAuth, paymentController.getPayment);
 
 /**
  * Webhook Routes (No Auth Required - Razorpay signature validates)
+ * 
+ * CRITICAL: express.raw() MUST be applied here to preserve raw body
+ * This is required for HMAC SHA256 signature verification
+ * The signature is calculated from the raw request body, not parsed JSON
  */
 
 // Razorpay webhook
@@ -40,7 +48,8 @@ router.get('/payment/:paymentId', adminAuth, paymentController.getPayment);
 // Headers: x-razorpay-signature
 router.post(
   '/webhook',
-  express.raw({ type: 'application/json' }),
+  captureRawBody,
+  attachRawBody,
   paymentController.webhook
 );
 
