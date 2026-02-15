@@ -2,7 +2,7 @@ import { Minus, Plus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getImageUrl } from "@/lib/utils";
 import { Layout } from "@/components/layout/Layout";
 
 export default function Cart() {
@@ -63,9 +63,13 @@ export default function Cart() {
                     <div className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 rounded-md bg-muted">
                       {item.product.images && item.product.images[0] && (
                         <img
-                          src={item.product.images[0]}
+                          src={getImageUrl(item.product.images[0])}
                           alt={item.product.name}
                           className="h-full w-full object-cover rounded-md"
+                          onError={(e) => {
+                            console.error(`❌ Cart image load failed for product ${item.product.id}`);
+                            (e.target as HTMLImageElement).src = '/placeholder.svg';
+                          }}
                         />
                       )}
                     </div>
