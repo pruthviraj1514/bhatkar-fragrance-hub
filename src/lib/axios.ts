@@ -15,6 +15,10 @@ const api = axios.create({
 // Add request interceptor to include Bearer token and handle FormData
 api.interceptors.request.use(
   (config) => {
+    // Log request for debugging
+    const fullUrl = `${config.baseURL || ''}${config.url}`;
+    console.log(`📡 ${config.method?.toUpperCase()} ${fullUrl}`);
+    
     // Don't add token to public endpoints (signin, signup)
     const publicEndpoints = ["/auth/signin", "/auth/signup"];
     const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
@@ -44,6 +48,32 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('❌ Request error:', error.message);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for enhanced error logging
+api.interceptors.response.use(
+  (response) => {
+    if (response.status === 200 || response.status === 201) {
+      console.log(`✅ Response ${response.status}`);
+    }
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      console.error(`❌ HTTP ${error.response.status}: ${error.response.statusText}`);
+      console.error(`   URL: ${error.config?.url}`);
+      if (error.response.data?.error) {
+        console.error(`   Error: ${error.response.data.error}`);
+      }
+    } else if (error.request) {
+      console.error('❌ No response from server');
+      console.error('   Request:', error.request);
+    } else {
+      console.error('❌ Error:', error.message);
+    }
     return Promise.reject(error);
   }
 );

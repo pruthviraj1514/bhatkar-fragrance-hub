@@ -60,31 +60,44 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('🛒 Starting payment process...');
 
       // 1. Load Razorpay script
+      console.log('📦 Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay script');
+        throw new Error('Failed to load Razorpay script - check CDN access');
       }
+      console.log('✅ Razorpay script loaded');
 
       // 2. Create order on backend using first item (backend will calculate total)
       const mainItem = items[0];
       if (!mainItem) {
-        throw new Error('Cart is empty');
+        throw new Error('Cart is empty - no items to purchase');
       }
 
+      console.log(`🔄 Creating order for product ${mainItem.productId}, quantity ${mainItem.quantity}...`);
+      console.log(`📡 API Base URL: ${import.meta.env.VITE_API_BASE_URL}`);
+      
       const orderResponse = await api.post('/payment/create-order', {
         productId: mainItem.productId,
         quantity: mainItem.quantity
       });
 
+      console.log('📨 Order creation response:', orderResponse.status, orderResponse.data);
+
       if (!orderResponse.data.success) {
-        throw new Error(orderResponse.data.error || 'Failed to create order');
+        const errorMsg = orderResponse.data.error || 'Failed to create order';
+        console.error('❌ Order creation failed:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const { razorpayOrderId, amount, orderId, productName } = orderResponse.data;
+      console.log(`✅ Order created: ${orderId}, Razorpay Order: ${razorpayOrderId}, Amount: ₹${amount}`);
 
       // 3. Open Razorpay checkout
+      console.log('🎯 Opening Razorpay Checkout modal...');
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SG2Tx6WI4tXjVc',
         amount: Math.round(amount * 100), // Convert to paise
@@ -99,13 +112,19 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
             setLoading(true);
 
             // 4. Verify payment on backend
+            console.log('💳 Payment successful, verifying on backend...');
+            console.log('Payment ID:', response.razorpay_payment_id);
+            
             const verifyResponse = await api.post('/payment/verify', {
               orderId,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature
             });
 
+            console.log('✅ Verification response:', verifyResponse.data);
+
             if (verifyResponse.data.success) {
+              console.log('🎉 Payment verified successfully! Order:', orderId);
               // Payment successful
               if (onSuccess) {
                 onSuccess({
@@ -115,9 +134,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
                 });
               }
             } else {
-              throw new Error('Payment verification failed');
+              throw new Error('Payment verification failed - ' + verifyResponse.data.error);
             }
           } catch (err: any) {
+            console.error('❌ Payment error:', err.message);
             setError(err.message || 'Payment verification failed');
             if (onError) {
               onError(err);
@@ -156,6 +176,13 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
       razorpay.open();
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || 'Payment failed';
+      console.error('❌ Payment initialization error:', {
+        message: errorMessage,
+        status: err.response?.status,
+        url: err.response?.config?.url,
+        method: err.response?.config?.method,
+        fullError: err
+      });
       setError(errorMessage);
       if (onError) {
         onError(err);
