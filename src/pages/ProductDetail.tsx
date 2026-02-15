@@ -658,7 +658,7 @@ export default function ProductDetail() {
               {/* Trust Badges */}
               <div className="grid grid-cols-2 gap-4 py-6 border-t border-b border-border">
                 {[
-                  { icon: RotateCcw, label: "Easy Returns", desc: "30 Days" },
+                  { icon: RotateCcw, label: "No Return Policy", desc: "Not accepted" },
                   { icon: Shield, label: "100% Authentic", desc: "Guaranteed" },
                 ].map((badge) => (
                   <div key={badge.label} className="text-center">

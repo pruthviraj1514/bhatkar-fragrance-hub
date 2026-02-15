@@ -386,8 +386,8 @@ export default function ProductDetailWithImages() {
                 <div className="flex items-start gap-3">
                   <RotateCcw className="h-5 w-5 text-orange-500 flex-shrink-0 mt-1" />
                   <div>
-                    <p className="font-semibold text-gray-900">Easy Returns</p>
-                    <p className="text-sm text-gray-600">30-day return policy</p>
+                    <p className="font-semibold text-gray-900">No Return Policy</p>
+                    <p className="text-sm text-gray-600">No returns accepted</p>
                   </div>
                 </div>
 

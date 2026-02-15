@@ -399,7 +399,7 @@ export default function Checkout() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Gift className="h-3 w-3 flex-shrink-0" />
-                    <span>Free returns 30d</span>
+                    <span>No Return Policy</span>
                   </div>
                 </div>
               </div>

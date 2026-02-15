@@ -183,7 +183,7 @@ export default function Cart() {
 
                 <div className="mt-4 rounded-md bg-muted p-2 sm:p-3 text-xs text-muted-foreground space-y-1">
                   <div>✓ 100% authentic products</div>
-                  <div>✓ Easy returns</div>
+                  <div>✓ No Return Policy</div>
                 </div>
               </div>
             </div>
