@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import CheckoutPayment from "@/components/CheckoutPayment";
 
 export default function Checkout() {
   const { state, totalPrice } = useCart();
@@ -22,6 +23,7 @@ export default function Checkout() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [paymentReady, setPaymentReady] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -31,10 +33,7 @@ export default function Checkout() {
     city: "",
     state: "",
     zipCode: "",
-    country: "US",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCVC: "",
+    country: "IN",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,53 +51,61 @@ export default function Checkout() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Validate form
-      if (
-        !formData.email ||
-        !formData.firstName ||
-        !formData.lastName ||
-        !formData.address ||
-        !formData.city ||
-        !formData.state ||
-        !formData.zipCode ||
-        !formData.cardNumber ||
-        !formData.cardExpiry ||
-        !formData.cardCVC
-      ) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all required fields",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
+  const validateShippingInfo = () => {
+    if (
+      !formData.email ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.address ||
+      !formData.city ||
+      !formData.state ||
+      !formData.zipCode
+    ) {
       toast({
-        title: "Order Placed Successfully!",
-        description: `Order confirmation sent to ${formData.email}`,
-      });
-
-      // Redirect to orders page after success
-      setTimeout(() => {
-        navigate("/orders");
-      }, 1500);
-    } catch (error) {
-      toast({
-        title: "Payment Failed",
-        description: "Please try again with valid payment details",
+        title: "Missing Information",
+        description: "Please fill in all shipping details before payment",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      return false;
+    }
+    return true;
+  };
+
+  const handlePaymentSuccess = (response: any) => {
+    toast({
+      title: "Order Placed Successfully!",
+      description: `Order ${response.orderId} confirmed. Check your email for details.`,
+    });
+
+    // Save order details to localStorage for reference
+    localStorage.setItem(
+      "lastOrder",
+      JSON.stringify({
+        orderId: response.orderId,
+        paymentId: response.paymentId,
+        amount: response.amount,
+        customerEmail: formData.email,
+        shippingAddress: formData,
+      })
+    );
+
+    // Redirect to orders page
+    setTimeout(() => {
+      navigate("/orders");
+    }, 2000);
+  };
+
+  const handlePaymentError = (error: any) => {
+    toast({
+      title: "Payment Error",
+      description: error.message || "Payment failed. Please try again.",
+      variant: "destructive",
+    });
+  };
+
+  const proceedToPayment = () => {
+    if (validateShippingInfo()) {
+      setPaymentReady(true);
     }
   };
 
@@ -137,7 +144,7 @@ export default function Checkout() {
           <div className="grid gap-4 md:gap-8 md:grid-cols-3">
             {/* Checkout Form - moves below on mobile */}
             <div className="md:col-span-2 order-2 md:order-1">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <form className="space-y-4 sm:space-y-6">
                 {/* Contact Information */}
                 <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
                   <h2 className="mb-3 sm:mb-4 font-display text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -163,7 +170,7 @@ export default function Checkout() {
                         id="phone"
                         name="phone"
                         type="tel"
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="+91 98765 43210"
                         value={formData.phone}
                         onChange={handleInputChange}
                         className="text-sm sm:text-base"
@@ -225,7 +232,7 @@ export default function Checkout() {
                         <Input
                           id="city"
                           name="city"
-                          placeholder="New York"
+                          placeholder="Mumbai"
                           value={formData.city}
                           onChange={handleInputChange}
                           className="text-sm sm:text-base"
@@ -237,7 +244,7 @@ export default function Checkout() {
                         <Input
                           id="state"
                           name="state"
-                          placeholder="NY"
+                          placeholder="Maharashtra"
                           value={formData.state}
                           onChange={handleInputChange}
                           className="text-sm sm:text-base"
@@ -252,7 +259,7 @@ export default function Checkout() {
                         <Input
                           id="zipCode"
                           name="zipCode"
-                          placeholder="10001"
+                          placeholder="400001"
                           value={formData.zipCode}
                           onChange={handleInputChange}
                           className="text-sm sm:text-base"
@@ -271,11 +278,11 @@ export default function Checkout() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="IN">India</SelectItem>
                             <SelectItem value="US">United States</SelectItem>
                             <SelectItem value="CA">Canada</SelectItem>
                             <SelectItem value="UK">United Kingdom</SelectItem>
                             <SelectItem value="AU">Australia</SelectItem>
-                            <SelectItem value="IN">India</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -283,64 +290,57 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* Payment Information */}
+                {/* Payment Section */}
                 <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
                   <h2 className="mb-3 sm:mb-4 font-display text-base sm:text-lg font-semibold flex items-center gap-2">
                     <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Payment Information
+                    Payment Method
                   </h2>
-                  <div className="space-y-3 sm:space-y-4">
+
+                  {!paymentReady ? (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Choose your preferred payment method - UPI, Cards, Wallets, NetBanking and more available
+                      </p>
+                      <Button
+                        onClick={proceedToPayment}
+                        className="w-full"
+                        size="sm"
+                        disabled={loading}
+                      >
+                        Proceed to Payment
+                      </Button>
+                    </div>
+                  ) : (
                     <div>
-                      <Label htmlFor="cardNumber" className="text-sm sm:text-base">Card Number</Label>
-                      <Input
-                        id="cardNumber"
-                        name="cardNumber"
-                        placeholder="4111 1111 1111 1111"
-                        value={formData.cardNumber}
-                        onChange={handleInputChange}
-                        className="text-sm sm:text-base"
-                        required
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p className="text-sm text-blue-800">
+                          💳 Pay ₹{formatPrice((totalPrice * 1.1))} using your preferred method
+                        </p>
+                      </div>
+                      <CheckoutPayment
+                        items={state.items.map(item => ({
+                          productId: item.product.id,
+                          quantity: item.quantity,
+                          price: item.selectedPrice
+                        }))}
+                        totalAmount={totalPrice * 1.1}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
+                        buttonText={`Pay ₹${formatPrice((totalPrice * 1.1))}`}
+                        buttonClassName="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 font-medium disable:opacity-60"
                       />
+                      <Button
+                        onClick={() => setPaymentReady(false)}
+                        variant="outline"
+                        className="w-full mt-2"
+                        size="sm"
+                      >
+                        Back to Shipping
+                      </Button>
                     </div>
-
-                    <div className="grid gap-2 sm:gap-4 grid-cols-2">
-                      <div>
-                        <Label htmlFor="cardExpiry" className="text-sm sm:text-base">Expiry Date</Label>
-                        <Input
-                          id="cardExpiry"
-                          name="cardExpiry"
-                          placeholder="MM/YY"
-                          value={formData.cardExpiry}
-                          onChange={handleInputChange}
-                          className="text-sm sm:text-base"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cardCVC" className="text-sm sm:text-base">CVC</Label>
-                        <Input
-                          id="cardCVC"
-                          name="cardCVC"
-                          placeholder="123"
-                          value={formData.cardCVC}
-                          onChange={handleInputChange}
-                          className="text-sm sm:text-base"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="sm"
-                  disabled={loading}
-                >
-                  {loading ? "Processing..." : "Complete Purchase"}
-                </Button>
               </form>
             </div>
 
