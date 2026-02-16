@@ -70,7 +70,46 @@ export function usePayment() {
 
         console.log(`✅ Payload validated: productId=${productId}, quantity=${quantity}`);
 
-        // ========== STEP 3: LOAD RAZORPAY SCRIPT ==========
+        // ========== STEP 3: EXTRACT USER ID ==========
+        console.log("🔍 Extracting user ID from auth context...");
+        
+        // Get userId from different sources
+        let userId: number | null = null;
+        
+        // Try from admin object first (for admin users)
+        if (admin?.id) {
+          userId = admin.id;
+          console.log(`✅ Admin user ID found: ${userId}`);
+        }
+        
+        // Try from localStorage as fallback
+        if (!userId) {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              userId = parsedUser.id;
+              console.log(`✅ User ID from localStorage: ${userId}`);
+            } catch (e) {
+              console.warn("❌ Could not parse user from localStorage");
+            }
+          }
+        }
+        
+        // Validate userId exists
+        if (!userId || typeof userId !== "number" || userId < 1) {
+          const errorMsg = "❌ User ID not found - cannot process payment";
+          console.error(errorMsg);
+          setError(errorMsg);
+          toast({
+            title: "User Information Missing",
+            description: "Unable to retrieve your user ID. Please log out and log in again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // ========== STEP 4: LOAD RAZORPAY SCRIPT ==========
         console.log("📦 Loading Razorpay script...");
 
         const scriptLoaded = await new Promise<boolean>((resolve) => {
@@ -94,19 +133,20 @@ export function usePayment() {
 
         console.log("✅ Razorpay script loaded");
 
-        // ========== STEP 4: SEND API REQUEST ==========
+        // ========== STEP 5: SEND API REQUEST ==========
         console.log("📡 Sending API request to /api/payment/create-order");
         console.log(`   📊 API Base URL: ${import.meta.env.VITE_API_BASE_URL}`);
 
         const payload = {
           productId,
+          userId,
           quantity,
         };
 
         console.log("   📄 Request payload:", JSON.stringify(payload, null, 2));
 
-        // Send request with Authorization header
-        // Backend will extract userId from JWT token
+        // Send request with Authorization header AND userId in payload
+        // Backend validates both sources for security
         const response = await api.post("/payment/create-order", payload, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -127,7 +167,7 @@ export function usePayment() {
           return;
         }
 
-        // ========== STEP 5: OPEN RAZORPAY CHECKOUT ==========
+        // ========== STEP 6: OPEN RAZORPAY CHECKOUT ==========
         const { razorpayOrderId, amount, orderId, productName } = response.data;
 
         console.log(`✅ Order created successfully`);
