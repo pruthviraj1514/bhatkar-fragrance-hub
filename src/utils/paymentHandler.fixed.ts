@@ -10,14 +10,14 @@
  */
 
 import { useState, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/lib/axios";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/lib/axios";
 import { useToast } from "@/components/ui/use-toast";
 
 export function PaymentHandler() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, admin, token, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
   /**
@@ -32,9 +32,8 @@ export function PaymentHandler() {
         // ========== STEP 1: VALIDATE USER IS LOGGED IN ==========
         console.log("🔑 Checking authentication...");
 
-        const userId = user?.id || localStorage.getItem("userId");
-
-        if (!userId) {
+        // Check if user is authenticated
+        if (!isAuthenticated || !token) {
           const errorMsg = "❌ Please log in to purchase";
           console.error(errorMsg);
           setError(errorMsg);
@@ -48,7 +47,9 @@ export function PaymentHandler() {
           return;
         }
 
-        console.log(`✅ User authenticated: ${userId}`);
+        // Get user display name
+        const userName = user?.firstname || admin?.email || "Customer";
+        console.log(`✅ User authenticated: ${userName}`);
 
         // ========== STEP 2: VALIDATE PAYLOAD ==========
         console.log("📋 Validating payment payload...");
@@ -100,12 +101,17 @@ export function PaymentHandler() {
         const payload = {
           productId,
           quantity,
-          userId, // ← NOW SENDING userId
         };
 
         console.log("   📄 Request payload:", JSON.stringify(payload, null, 2));
 
-        const response = await api.post("/payment/create-order", payload);
+        // Send request with Authorization header
+        // Backend will extract userId from JWT token
+        const response = await api.post("/payment/create-order", payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         console.log(`✅ API Response [${response.status}]:`, response.data);
 
@@ -204,7 +210,7 @@ export function PaymentHandler() {
         setLoading(false);
       }
     },
-    [user, toast]
+    [user, admin, token, isAuthenticated, toast]
   );
 
   return { handlePayment, loading, error };
