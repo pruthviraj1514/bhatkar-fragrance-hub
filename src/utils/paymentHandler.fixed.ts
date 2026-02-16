@@ -68,7 +68,7 @@ export function PaymentHandler() {
           return;
         }
 
-        console.log(`✅ Payload validated: productId=${productId}, quantity=${quantity}, userId=${userId}`);
+        console.log(`✅ Payload validated: productId=${productId}, quantity=${quantity}`);
 
         // ========== STEP 3: LOAD RAZORPAY SCRIPT ==========
         console.log("📦 Loading Razorpay script...");
@@ -145,7 +145,7 @@ export function PaymentHandler() {
           name: "Bhatkar & Co",
           description: productName,
           prefill: {
-            name: user?.name || "",
+            name: `${user?.firstname || ''} ${user?.lastname || ''}`.trim() || "",
             email: user?.email || "",
           },
           handler: async (response: any) => {
