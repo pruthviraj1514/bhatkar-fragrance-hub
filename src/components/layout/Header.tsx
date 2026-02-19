@@ -41,11 +41,19 @@ export function Header() {
 
         {/* Logo - Brand Logo with Text */}
         <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-          {/* Logo Image/Icon */}
+          {/* Logo Image (place the provided logo at /bhatkar-logo.png in public/) */}
+          <img
+            src="/bhatkar-logo.png"
+            alt="Bhatkar & Co"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            className="w-10 h-10 object-contain"
+          />
+
+          {/* Fallback Logo Text (visible if image is missing) */}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-amber-600 to-amber-800 text-white font-bold text-lg">
             B
           </div>
-          
+
           {/* Logo Text */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -88,14 +96,15 @@ export function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center space-x-2">
-          <SearchBar />
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="hidden md:flex relative"
-            onClick={() => window.location.href = '/wishlist'}
-            aria-label="Wishlist"
-          >
+          <div className="flex items-center">
+            <SearchBar attachRight />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hidden md:flex relative rounded-l-none border-l border-border"
+              onClick={() => window.location.href = '/wishlist'}
+              aria-label="Wishlist"
+            >
             <Heart className="h-5 w-5" />
             {wishlistItems.length > 0 && (
               <motion.span

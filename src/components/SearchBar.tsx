@@ -7,7 +7,7 @@ import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
 import { getProductImage, handleImageError } from "@/lib/imageUtils";
 
-export function SearchBar() {
+export function SearchBar({ attachRight = false }: { attachRight?: boolean } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<typeof products>([]);
@@ -141,7 +141,12 @@ export function SearchBar() {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsOpen(true)}
             aria-label="Search products"
-            className="w-full pl-10 pr-10 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            className={
+              `w-full pl-10 pr-10 py-2 border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ` +
+              (attachRight && !isOpen
+                ? 'rounded-l-lg rounded-r-none' // square/attached when closed
+                : 'rounded-lg')
+            }
           />
           {searchQuery && (
             <button
