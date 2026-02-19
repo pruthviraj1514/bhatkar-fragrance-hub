@@ -167,10 +167,21 @@ exports.getAllProductsWithImages = async (req, res) => {
     }
 
     // Refresh signed URLs dynamically (prevents expired URL issues)
-    const imageURLService = require('../services/imageURLService');
-    products = imageURLService.refreshProductsImageUrls(products);
-
-    logger.info(`Retrieved ${products.length} products with images (URLs refreshed)`);
+    try {
+      const imageURLService = require('../services/imageURLService');
+      // imageURLService internally falls back when S3/aws-sdk is unavailable
+      products = imageURLService.refreshProductsImageUrls(products);
+      logger.info(`Retrieved ${products.length} products with images (URLs refreshed)`);
+    } catch (err) {
+      // Do not crash — return products with fallback image URLs
+      logger.warn('Image URL refresh failed, returning products with fallback images:', err && err.message ? err.message : err);
+      const fallbackUrl = process.env.DEFAULT_PRODUCT_IMAGE_URL || '/uploads/default-product.png';
+      products = products.map(p => ({
+        ...p,
+        images: (p.images || []).map(img => ({ ...img, image_url: img.image_url || fallbackUrl }))
+      }));
+      logger.info(`Retrieved ${products.length} products with fallback images`);
+    }
 
     return res.status(200).json({
       status: 'success',
