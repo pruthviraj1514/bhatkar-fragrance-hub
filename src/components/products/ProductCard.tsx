@@ -8,7 +8,7 @@ import { Product } from "@/data/products";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { formatPrice, cn } from "@/lib/utils";
-import { getProductImage, handleImageError } from "@/lib/imageUtils";
+import { getProductImageWithFallback, handleImageError } from "@/lib/imageUtils";
 
 interface ProductImage {
   id: number;
@@ -51,9 +51,10 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const isWishlisted = isInWishlist(product.id);
   
   const isStatic = isStaticProduct(product);
-  const imageUrl = isStatic 
-    ? product.images[0] 
-    : getProductImage((product as DatabaseProduct).images);
+  const imageUrl = isStatic
+    ? // static products store simple image strings
+      (product as Product).images && (product as Product).images.length ? (product as Product).images[0] : '/placeholder.svg'
+    : getProductImageWithFallback((product as DatabaseProduct).images, '/placeholder.svg');
   const productPrice = product.price;
   const productName = product.name;
 

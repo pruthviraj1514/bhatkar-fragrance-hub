@@ -1,0 +1,39 @@
+#!/usr/bin/env node
+require('dotenv').config();
+const pool = require('../../config/db.pool');
+
+async function columnExists(table, column) {
+  const [rows] = await pool.query(
+    'SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [table, column]
+  );
+  return rows[0] && rows[0].cnt > 0;
+}
+
+async function addColumnIfMissing(table, column, definition) {
+  const exists = await columnExists(table, column);
+  if (exists) {
+    console.log(`${column} already exists on ${table}`);
+    return false;
+  }
+
+  console.log(`Adding ${column} to ${table}...`);
+  await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+  console.log(`Added ${column} to ${table}`);
+  return true;
+}
+
+async function main() {
+  try {
+    await addColumnIfMissing('orders', 'user_id', 'INT NULL');
+    await addColumnIfMissing('payments', 'user_id', 'INT NULL');
+    console.log('✅ ensure-user_id-columns migration complete.');
+  } catch (err) {
+    console.error('Migration failed:', err);
+    process.exitCode = 1;
+  } finally {
+    try { await pool.end(); } catch (e) {}
+  }
+}
+
+main();

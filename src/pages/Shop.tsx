@@ -26,6 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
 import api from "@/lib/axios";
+import { normalizeProductImages } from "@/lib/imageUtils";
 import { toast } from "sonner";
 
 interface DatabaseProduct {
@@ -92,6 +93,7 @@ export default function Shop() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const prevProductCountRef = useRef(0);
   const isMountedRef = useRef(true);
+  const hasFetchedRef = useRef(false);
 
   // Manual refresh function
   const handleRefresh = async () => {
@@ -114,12 +116,20 @@ export default function Shop() {
   // Fetch products from database with images
   useEffect(() => {
     const fetchProducts = async () => {
+      // Mark as fetched immediately to avoid duplicate requests in the same mount
+      if (hasFetchedRef.current) {
+        console.debug('Fetch skipped: already fetched during this mount cycle');
+        return;
+      }
+      hasFetchedRef.current = true;
       try {
         console.log('🔄 Fetching from API: /products/with-images/all');
         const response = await api.get('/products/with-images/all');
         console.log('✅ API returned status:', response.status);
         
-        const newProducts = response.data.data || [];
+        const rawProducts = response.data.data || [];
+        // Normalize image fields so components receive consistent shapes
+        const newProducts = rawProducts.map((p: any) => normalizeProductImages(p));
         console.log('📦 Loaded', newProducts.length, 'products from database');
         if (newProducts.length > 0) {
           console.log('First product:', { id: newProducts[0].id, name: newProducts[0].name, hasImages: !!newProducts[0].images });

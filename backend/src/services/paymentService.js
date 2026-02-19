@@ -25,10 +25,24 @@ class PaymentService {
       await conn.beginTransaction();
 
       // 1. Fetch product price from database (NEVER from frontend)
-      const [productRows] = await conn.execute(
-        'SELECT id, name, price FROM products WHERE id = ? AND is_active = 1',
-        [productId]
-      );
+      let productRows;
+      try {
+        [productRows] = await conn.execute(
+          'SELECT id, name, price FROM products WHERE id = ? AND is_active = 1',
+          [productId]
+        );
+      } catch (err) {
+        // Some databases may not have the `is_active` column yet (migration missed).
+        // Retry without the is_active filter for compatibility.
+        const msg = err && err.message ? err.message : '';
+        if (msg.includes("Unknown column 'is_active'") || msg.includes('is_active')) {
+          logger.warn('is_active column missing, retrying product lookup without is_active filter');
+          const res = await conn.execute('SELECT id, name, price FROM products WHERE id = ?', [productId]);
+          productRows = res[0];
+        } else {
+          throw err;
+        }
+      }
 
       if (!productRows || productRows.length === 0) {
         throw new Error('Product not found or inactive');

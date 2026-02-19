@@ -51,7 +51,8 @@ export function getProductImage(image: any, fallback: string = '/placeholder.svg
     // Handle arrays (usually product.images array or variant images array)
     if (Array.isArray(image)) {
       if (image.length === 0) {
-        console.warn('⚠️ getProductImage: Array is empty');
+        // Empty arrays are common; use debug level to avoid spamming the console
+        console.debug('ℹ️ getProductImage: Array is empty');
         return fallback;
       }
 
