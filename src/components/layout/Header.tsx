@@ -20,6 +20,8 @@ const navLinks = [
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Handler to hide logo image if it fails to load
+  const hideLogo = (e: any) => { e.currentTarget.style.display = 'none'; };
   const { toggleCart, totalItems } = useCart();
   const { items: wishlistItems } = useWishlist();
   const { isAuthenticated, isAdmin } = useAuth();
@@ -45,7 +47,7 @@ export function Header() {
           <img
             src="/bhatkar-logo.png"
             alt="Bhatkar & Co"
-            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+            onError={hideLogo}
             className="w-10 h-10 object-contain"
           />
 
