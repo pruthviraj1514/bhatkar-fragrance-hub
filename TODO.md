@@ -21,7 +21,7 @@
    - [x] Update fallback to correct production URL
 
 5. **test-api.js** (optional - local test file)
-   - [ ] Update to use production URL
+   - [x] Update to use production URL
 
 ### Environment Variables to Document:
 - DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT
@@ -51,3 +51,11 @@
 
 ### 4. src/lib/axios.ts
 - ✅ Fallback URL updated to correct production URL (bhatkar-fragrance-hub-5.onrender.com)
+
+### 5. backend/src/controllers/products.optimized.controller.js
+- ✅ Added imageURLService import
+- ✅ Updated getAllProducts to generate signed URLs for images
+- ✅ Updated getProductById to generate signed URLs for images
+- ✅ Updated getBestSellers to generate signed URLs for images
+- ✅ Updated formatProduct helper to generate signed URLs for images
+- ✅ Now used by getProductsByCategory, searchProducts, getTopRatedProducts

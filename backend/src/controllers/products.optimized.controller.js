@@ -16,6 +16,7 @@
 const { logger } = require('../utils/logger');
 const { executeQuery, queryOne } = require('../config/db.pool');
 const queries = require('../database/products.optimized.queries');
+const imageURLService = require('../services/imageURLService');
 
 // ========================================================================
 // IN-MEMORY CACHE (Simple Redis-ready structure)
@@ -132,18 +133,22 @@ exports.getAllProducts = async (req, res) => {
       [limit, offset]
     );
 
-    // Parse and format response
-    const formattedProducts = products.map(product => ({
-      ...product,
-      price: parseFloat(product.price),
-      original_price: parseFloat(product.original_price),
-      discount_percentage: parseFloat(product.discount_percentage),
-      shipping_cost: parseFloat(product.shipping_cost),
-      other_charges: parseFloat(product.other_charges),
-      avg_rating: parseFloat(product.avg_rating),
-      images: parseJSON(product.images),
-      final_price: calculateFinalPrice(product)
-    }));
+    // Parse and format response with signed URLs
+    const formattedProducts = products.map(product => {
+      const parsedImages = parseJSON(product.images);
+      const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
+      return {
+        ...product,
+        price: parseFloat(product.price),
+        original_price: parseFloat(product.original_price),
+        discount_percentage: parseFloat(product.discount_percentage),
+        shipping_cost: parseFloat(product.shipping_cost),
+        other_charges: parseFloat(product.other_charges),
+        avg_rating: parseFloat(product.avg_rating),
+        images: imagesWithSignedUrls,
+        final_price: calculateFinalPrice(product)
+      };
+    });
 
     const duration = Date.now() - startTime;
 
@@ -224,7 +229,10 @@ exports.getProductById = async (req, res) => {
       logger.warn('Could not increment views:', err.message);
     });
 
-    // Format product
+    // Format product with signed URLs
+    const parsedImages = parseJSON(product.images);
+    const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
+    
     const formattedProduct = {
       ...product,
       price: parseFloat(product.price),
@@ -233,7 +241,7 @@ exports.getProductById = async (req, res) => {
       shipping_cost: parseFloat(product.shipping_cost),
       other_charges: parseFloat(product.other_charges),
       avg_rating: parseFloat(product.avg_rating),
-      images: parseJSON(product.images),
+      images: imagesWithSignedUrls,
       final_price: calculateFinalPrice(product)
     };
 
@@ -289,14 +297,18 @@ exports.getBestSellers = async (req, res) => {
       [limit]
     );
 
-    const formattedProducts = products.map(product => ({
-      ...product,
-      price: parseFloat(product.price),
-      original_price: parseFloat(product.original_price),
-      discount_percentage: parseFloat(product.discount_percentage),
-      avg_rating: parseFloat(product.avg_rating),
-      images: parseJSON(product.images || '[]')
-    }));
+    const formattedProducts = products.map(product => {
+      const parsedImages = parseJSON(product.images || '[]');
+      const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
+      return {
+        ...product,
+        price: parseFloat(product.price),
+        original_price: parseFloat(product.original_price),
+        discount_percentage: parseFloat(product.discount_percentage),
+        avg_rating: parseFloat(product.avg_rating),
+        images: imagesWithSignedUrls
+      };
+    });
 
     const duration = Date.now() - startTime;
 
@@ -554,6 +566,10 @@ function calculateFinalPrice(product) {
 }
 
 function formatProduct(product) {
+  // Parse images and generate fresh signed URLs
+  const parsedImages = parseJSON(product.images || '[]');
+  const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
+  
   return {
     ...product,
     price: parseFloat(product.price),
@@ -562,7 +578,7 @@ function formatProduct(product) {
     shipping_cost: parseFloat(product.shipping_cost),
     other_charges: parseFloat(product.other_charges),
     avg_rating: parseFloat(product.avg_rating),
-    images: parseJSON(product.images || '[]'),
+    images: imagesWithSignedUrls,
     final_price: calculateFinalPrice(product)
   };
 }
