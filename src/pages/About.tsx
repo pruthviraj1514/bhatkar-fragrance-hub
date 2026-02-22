@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { COMPANY_INFO } from "@/config/company";
 
 export default function About() {
   return (
@@ -105,13 +106,8 @@ export default function About() {
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Phone</h3>
                     <p className="text-muted-foreground">
-                      <a href="tel:+919876543210" className="hover:text-primary transition-colors">
-                        +91 98765 43210
-                      </a>
-                    </p>
-                    <p className="text-muted-foreground">
-                      <a href="tel:+919876543211" className="hover:text-primary transition-colors">
-                        +91 98765 43211
+                      <a href={`tel:${COMPANY_INFO.phone}`} className="hover:text-primary transition-colors">
+                        {COMPANY_INFO.phone}
                       </a>
                     </p>
                   </div>
@@ -124,13 +120,8 @@ export default function About() {
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Email</h3>
                     <p className="text-muted-foreground">
-                      <a href="mailto:info@bhatkarcco.com" className="hover:text-primary transition-colors">
-                        info@bhatkarcco.com
-                      </a>
-                    </p>
-                    <p className="text-muted-foreground">
-                      <a href="mailto:support@bhatkarcco.com" className="hover:text-primary transition-colors">
-                        support@bhatkarcco.com
+                      <a href={`mailto:${COMPANY_INFO.email}`} className="hover:text-primary transition-colors">
+                        {COMPANY_INFO.email}
                       </a>
                     </p>
                   </div>
@@ -142,11 +133,8 @@ export default function About() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Address</h3>
-                    <p className="text-muted-foreground">
-                      Bhatkar & Co<br />
-                      123 Fragrance Street<br />
-                      Mumbai, Maharashtra 400001<br />
-                      India
+                    <p className="text-muted-foreground whitespace-pre-line">
+                      {COMPANY_INFO.address}
                     </p>
                   </div>
                 </div>
@@ -188,14 +176,14 @@ export default function About() {
             {/* Mobile Quick Contact Buttons */}
             <div className="flex flex-col gap-3 mt-6 md:hidden">
               <a 
-                href="tel:+919876543210"
+                href={`tel:${COMPANY_INFO.phone}`}
                 className="flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
               >
                 <Phone className="h-5 w-5" />
                 Call Now
               </a>
               <a 
-                href="mailto:info@bhatkarcco.com"
+                href={`mailto:${COMPANY_INFO.email}`}
                 className="flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-lg font-semibold hover:bg-secondary/90 transition-colors"
               >
                 <Mail className="h-5 w-5" />

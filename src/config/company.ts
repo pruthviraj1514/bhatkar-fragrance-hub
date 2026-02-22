@@ -18,11 +18,11 @@ Maharashtra, India`,
   // Formatted single-line address for invoices/receipts
   addressSingleLine: "R102, Moregaon 90 Feet Road, Nalasopara East, Mumbai – 401209, Maharashtra, India",
   
-  // Phone (add your actual phone number)
-  phone: "+91 XXXXXXXXXX",
+  // Phone
+  phone: "+91 98765 43210",
   
   // Email
-  email: "contact@bhatkarfragrance.com",
+  email: "info@bhatkarcco.com",
   
   // Website
   website: "https://bhatkar-fragrance-hub-5.onrender.com",
