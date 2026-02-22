@@ -22,23 +22,27 @@ api.interceptors.request.use(
     console.log(`📡 [${timestamp}] ${method} ${fullUrl}`);
     
     // ===== AUTHENTICATION HANDLING =====
-    // Public endpoints that don't need auth
-    const publicEndpoints = [
+    // Public GET endpoints (read-only operations - POST/PUT/DELETE need auth)
+    const publicGetEndpoints = [
       "/auth/signin",
       "/auth/signup",
       "/products",
       "/variants",
       "/reviews",
-      "/payment/create-order",  // ✅ Payment creation is public (customers pay)
-      "/payment/verify",        // ✅ Payment verification needs signature, not auth
+      "/payment/create-order",
+      "/payment/verify",
     ];
     
-    const isPublicEndpoint = publicEndpoints.some(endpoint => 
-      config.url?.includes(endpoint)
+    const requestMethod = config.method?.toLowerCase() || 'get';
+    const url = config.url || '';
+    
+    // Only treat as public if it's a GET request to a public endpoint
+    const isPublicGetEndpoint = publicGetEndpoints.some(endpoint => 
+      url.includes(endpoint) && requestMethod === 'get'
     );
     
-    // Only add token for protected endpoints
-    if (!isPublicEndpoint) {
+    // Add token for ALL protected requests (POST, PUT, DELETE)
+    if (!isPublicGetEndpoint) {
       const token = localStorage.getItem("adminToken") || localStorage.getItem("token");
       
       if (token) {
