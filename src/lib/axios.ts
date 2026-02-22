@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "https://bhatkar-fragrance-hub-5.onrender.com/api";
+const baseURL = import.meta.env.VITE_API_BASE_URL || "https://bhatkar-fragrance-hub-1.onrender.com/api";
 
 console.log(`API Base URL: ${baseURL}`);
 

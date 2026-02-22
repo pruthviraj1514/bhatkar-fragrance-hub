@@ -120,31 +120,66 @@ async function runMigrations() {
         
         if (reviewsTable.length === 0) {
             logger.info('🔄 Creating reviews table...');
-                        await db.query(`
-                                CREATE TABLE reviews (
-                                    id INT PRIMARY KEY AUTO_INCREMENT,
-                                    product_id INT NOT NULL,
-                                    reviewer_name VARCHAR(255) NOT NULL,
-                                    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
-                                    review_text TEXT NOT NULL,
-                                    verified_purchase BOOLEAN DEFAULT 0,
-                                    is_approved BOOLEAN DEFAULT 1,
-                                    is_featured BOOLEAN DEFAULT 0,
-                                    is_active BOOLEAN DEFAULT 1,
-                                    created_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6),
-                                    updated_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-                                    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-                                    INDEX idx_product (product_id),
-                                    INDEX idx_rating (rating)
-                                )
-                        `);
+            await db.query(`
+                CREATE TABLE reviews (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    product_id INT NOT NULL,
+                    reviewer_name VARCHAR(255) NOT NULL,
+                    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    review_text TEXT NOT NULL,
+                    verified_purchase BOOLEAN DEFAULT 0,
+                    is_approved BOOLEAN DEFAULT 1,
+                    is_featured BOOLEAN DEFAULT 0,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6),
+                    updated_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+                    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+                    INDEX idx_product (product_id),
+                    INDEX idx_rating (rating)
+                )
+            `);
             logger.info('✓ Created reviews table');
         } else {
             logger.info('✓ reviews table already exists');
         }
 
+        // ===== SEED ADMIN USER =====
+        await seedAdminUser();
+
     } catch (error) {
         logger.warn(`Migration check failed: ${error.message}. This may be normal if the database is not ready yet.`);
+    }
+}
+
+// Admin user seeding function
+async function seedAdminUser() {
+    try {
+        // Check if admin user exists
+        const [existingAdmin] = await db.query(
+            "SELECT id FROM users WHERE email = 'admin@bhatkar.com' LIMIT 1"
+        );
+
+        if (existingAdmin.length === 0) {
+            logger.info('🔄 Creating default admin user...');
+            
+            // Hash the default password
+            const { hash: hashPassword } = require('../utils/password');
+            const hashedPassword = hashPassword('admin123');
+            
+            // Insert admin user - match exact column names from users table
+            // Table columns: id, firstname, lastname, email, password, created_on
+            await db.query(
+                `INSERT INTO users (firstname, lastname, email, password, created_on) 
+                 VALUES (?, ?, ?, ?, NOW())`,
+                ['Admin', 'Bhatkar', 'admin@bhatkar.com', hashedPassword]
+            );
+            
+            logger.info('✓ Default admin user created: admin@bhatkar.com / admin123');
+        } else {
+            logger.info('✓ Admin user already exists');
+        }
+    } catch (error) {
+        logger.warn(`Admin seeding failed: ${error.message}`);
     }
 }
 

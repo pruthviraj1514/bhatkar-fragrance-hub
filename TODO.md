@@ -12,6 +12,7 @@
 
 2. **backend/src/index.js**
    - [x] Change PORT to use process.env.PORT properly
+   - [x] Add admin user auto-seeding on startup
 
 3. **backend/src/app.js**
    - [x] Update CORS to allow production frontend
@@ -21,7 +22,7 @@
    - [x] Update fallback to correct production URL
 
 5. **test-api.js** (optional - local test file)
-   - [x] Update to use production URL
+   - [ ] Update to use production URL
 
 ### Environment Variables to Document:
 - DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT
@@ -36,26 +37,6 @@
 - Frontend: https://bhatkar-fragrance-hub-5.onrender.com
 - Backend API: https://bhatkar-fragrance-hub-5.onrender.com/api
 
-## COMPLETED CHANGES:
-
-### 1. backend/src/index.production.js
-- ✅ CORS already configured for production frontend
-- ✅ API_BASE_URL fallback set to correct production URL
-- ✅ Logger URLs now use dynamic variables (API_BASE_URL and FRONTEND_URL)
-
-### 2. backend/src/index.js
-- ✅ Already uses process.env.PORT || 5000
-
-### 3. backend/src/app.js
-- ✅ CORS already configured for production
-
-### 4. src/lib/axios.ts
-- ✅ Fallback URL updated to correct production URL (bhatkar-fragrance-hub-5.onrender.com)
-
-### 5. backend/src/controllers/products.optimized.controller.js
-- ✅ Added imageURLService import
-- ✅ Updated getAllProducts to generate signed URLs for images
-- ✅ Updated getProductById to generate signed URLs for images
-- ✅ Updated getBestSellers to generate signed URLs for images
-- ✅ Updated formatProduct helper to generate signed URLs for images
-- ✅ Now used by getProductsByCategory, searchProducts, getTopRatedProducts
+### Admin Credentials:
+- Email: admin@bhatkar.com
+- Password: admin123
