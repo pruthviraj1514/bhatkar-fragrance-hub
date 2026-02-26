@@ -16,7 +16,7 @@
  */
 
 const crypto = require('crypto');
-const db = require('../config/db.config');
+const db = require('../config/db');
 const { logger } = require('../utils/logger');
 const OrderModel = require('../models/orderModel');
 
@@ -86,10 +86,10 @@ const handlePaymentCaptured = async (event) => {
 
   if (updated) {
     logger.info(`✅ Order ${razorpayOrderId} marked as PAID`);
-    
+
     // Optional: Send confirmation email to customer
     // await sendPaymentConfirmationEmail(order.email, order);
-    
+
     return { processed: true, status: 'PAID' };
   } else {
     logger.error(`❌ Failed to update order ${razorpayOrderId} to PAID`);
@@ -124,10 +124,10 @@ const handlePaymentFailed = async (event) => {
 
   if (updated) {
     logger.info(`✅ Order ${razorpayOrderId} marked as FAILED`);
-    
+
     // Optional: Send failure notification to customer
     // await sendPaymentFailedEmail(order.email, order, failureReason);
-    
+
     return { processed: true, status: 'FAILED' };
   } else {
     logger.error(`❌ Failed to update order ${razorpayOrderId} to FAILED`);
@@ -164,10 +164,10 @@ const handleRefundProcessed = async (event) => {
 
   if (updated) {
     logger.info(`✅ Order ${razorpayOrderId} marked as REFUNDED (₹${refundAmount})`);
-    
+
     // Optional: Send refund confirmation to customer
     // await sendRefundConfirmationEmail(order.email, order, refundAmount);
-    
+
     return { processed: true, status: 'REFUNDED' };
   } else {
     logger.error(`❌ Failed to update order ${razorpayOrderId} to REFUNDED`);

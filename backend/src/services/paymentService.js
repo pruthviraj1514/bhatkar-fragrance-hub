@@ -6,7 +6,7 @@
  */
 
 const razorpay = require('../config/razorpay');
-const db = require('../config/db.pool');
+const db = require('../config/db');
 const crypto = require('crypto');
 const { logger } = require('../utils/logger');
 
@@ -20,7 +20,7 @@ class PaymentService {
    */
   async createOrder(userId, productId, quantity = 1, contact = null) {
     const conn = await db.getConnection();
-    
+
     try {
       await conn.beginTransaction();
 
@@ -351,7 +351,7 @@ class PaymentService {
       'SELECT * FROM orders WHERE id = ?',
       [orderId]
     );
-    
+
     if (rows.length === 0) {
       throw new Error('Order not found');
     }

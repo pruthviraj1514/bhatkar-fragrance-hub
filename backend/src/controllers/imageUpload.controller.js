@@ -90,7 +90,7 @@ exports.uploadProductImages = async (req, res) => {
     for (const imgData of uploadedImages) {
       try {
         logger.info(`  Saving image to database: ${imgData.imageUrl}`);
-        
+
         const saved = await ProductImage.addImage({
           productId,
           imageUrl: imgData.imageUrl,
@@ -144,7 +144,7 @@ exports.deleteProductImage = async (req, res) => {
     const { productId, imageId } = req.params;
 
     // Get image details before deleting
-    const [images] = await require('../config/db.config').query(
+    const [images] = await require('../config/db').query(
       'SELECT * FROM product_images WHERE id = ? AND product_id = ?',
       [imageId, productId]
     );

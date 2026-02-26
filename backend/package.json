@@ -13,9 +13,9 @@
     "db:init:clever-cloud": "node src/database/scripts/initCleverCloud.js",
     "db:add:product-images": "node src/database/scripts/addProductImages.js",
     "migrate:ml-pricing": "node src/database/scripts/migrateMlPricing.js",
-    "sync:variants": "node src/database/scripts/syncVariants.js"
-    ,"migrate:payments": "node src/database/scripts/ensure-payments-columns.js"
-    ,"migrate:orders": "node src/database/scripts/ensure-orders-columns.js"
+    "sync:variants": "node src/database/scripts/syncVariants.js",
+    "migrate:payments": "node src/database/scripts/ensure-payments-columns.js",
+    "migrate:orders": "node src/database/scripts/ensure-orders-columns.js"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +35,7 @@
     "multer": "^2.0.2",
     "mysql": "^2.18.1",
     "mysql2": "^3.16.2",
+    "pg": "^8.18.0",
     "razorpay": "^2.9.6"
   },
   "devDependencies": {

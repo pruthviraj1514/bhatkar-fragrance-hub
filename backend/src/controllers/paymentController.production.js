@@ -12,7 +12,7 @@
 
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const db = require('../config/db.config');
+const db = require('../config/db');
 const { logger } = require('../utils/logger');
 
 // ===== RAZORPAY INSTANCE =====
@@ -65,7 +65,7 @@ function generateOrderNumber() {
  */
 function verifyRazorpaySignature(orderId, paymentId, signature) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
-  
+
   const body = `${orderId}|${paymentId}`;
   const expectedSignature = crypto
     .createHmac('sha256', secret)
@@ -111,7 +111,7 @@ exports.createOrder = async (req, res) => {
     const orderNumber = generateOrderNumber();
 
     console.log(`📦 Creating order: ${orderNumber}, Amount: ₹${totalAmount}`);
-    
+
     connection = await db.getConnection();
     await connection.beginTransaction();
 
@@ -381,7 +381,7 @@ exports.handleWebhook = async (req, res) => {
     // ===== HANDLE DIFFERENT EVENT TYPES =====
     if (eventType === 'payment.authorized' || eventType === 'payment.captured') {
       console.log(`💳 Payment authorized/captured:`, event.payload.payment.entity.id);
-      
+
       const payment = event.payload.payment.entity;
       const paymentId = payment.id;
       const orderId = payment.notes?.orderId;
@@ -402,7 +402,7 @@ exports.handleWebhook = async (req, res) => {
       }
     } else if (eventType === 'payment.failed') {
       console.log(`❌ Payment failed:`, event.payload.payment.entity.id);
-      
+
       const payment = event.payload.payment.entity;
       const paymentId = payment.id;
       const orderId = payment.notes?.orderId;
@@ -424,7 +424,7 @@ exports.handleWebhook = async (req, res) => {
       }
     } else if (eventType === 'refund.created' || eventType === 'refund.processed') {
       console.log(`💰 Refund processed:`, event.payload.refund.entity.id);
-      
+
       const refund = event.payload.refund.entity;
       const paymentId = refund.payment_id;
 

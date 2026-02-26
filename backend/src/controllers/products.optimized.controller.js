@@ -14,7 +14,7 @@
  */
 
 const { logger } = require('../utils/logger');
-const { executeQuery, queryOne } = require('../config/db.pool');
+const { executeQuery, queryOne } = require('../config/db');
 const queries = require('../database/products.optimized.queries');
 const imageURLService = require('../services/imageURLService');
 
@@ -38,16 +38,16 @@ class ProductCache {
 
   get(key) {
     const item = this.cache.get(key);
-    
+
     if (!item) return null;
-    
+
     // Check if expired
     if (item.expiresAt < Date.now()) {
       this.cache.delete(key);
       logger.debug(`🗑️  Cache expired: ${key}`);
       return null;
     }
-    
+
     logger.debug(`✅ Cache hit: ${key}`);
     return item.value;
   }
@@ -58,7 +58,7 @@ class ProductCache {
       logger.info('🗑️  Cache cleared (all)');
       return;
     }
-    
+
     // Clear keys matching pattern
     for (const [key] of this.cache) {
       if (key.includes(pattern)) {
@@ -104,7 +104,7 @@ exports.getAllProducts = async (req, res) => {
     // Check cache first
     const cacheKey = `products:all:${page}:${limit}`;
     const cachedData = cache.get(cacheKey);
-    
+
     if (cachedData) {
       setCacheHeaders(res, 300);
       return res.status(200).json({
@@ -232,7 +232,7 @@ exports.getProductById = async (req, res) => {
     // Format product with signed URLs
     const parsedImages = parseJSON(product.images);
     const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
-    
+
     const formattedProduct = {
       ...product,
       price: parseFloat(product.price),
@@ -368,7 +368,7 @@ exports.getProductsByCategory = async (req, res) => {
       queries.countProductsByCategory,
       [category]
     );
-    
+
     const total = countResult.total;
 
     const products = await executeQuery(
@@ -509,7 +509,7 @@ exports.getTopRatedProducts = async (req, res) => {
 exports.healthCheck = async (req, res) => {
   try {
     const startTime = Date.now();
-    
+
     // Test database connection
     const [result] = await executeQuery('SELECT 1 as health');
     const dbTime = Date.now() - startTime;
@@ -547,7 +547,7 @@ exports.healthCheck = async (req, res) => {
 function parseJSON(jsonString) {
   if (!jsonString) return [];
   if (Array.isArray(jsonString)) return jsonString;
-  
+
   try {
     const parsed = JSON.parse(jsonString);
     return Array.isArray(parsed) ? parsed : [];
@@ -569,7 +569,7 @@ function formatProduct(product) {
   // Parse images and generate fresh signed URLs
   const parsedImages = parseJSON(product.images || '[]');
   const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);
-  
+
   return {
     ...product,
     price: parseFloat(product.price),

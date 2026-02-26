@@ -1,4 +1,4 @@
-const connection = require('../config/db.config');
+const db = require('../config/db');
 const { logger } = require('../utils/logger');
 
 /**
@@ -11,7 +11,7 @@ const createProduct = (productData, callback) => {
         INSERT INTO products (name, description, price, category, image_url, created_at)
         VALUES (?, ?, ?, ?, ?, NOW())
     `;
-    
+
     connection.query(query, [name, description, price, category, image_url], (err, result) => {
         if (err) {
             logger.error(`Error creating product: ${err.message}`);
@@ -23,7 +23,7 @@ const createProduct = (productData, callback) => {
 
 const getAllProducts = (callback) => {
     const query = 'SELECT * FROM products ORDER BY created_at DESC';
-    
+
     connection.query(query, (err, results) => {
         if (err) {
             logger.error(`Error fetching products: ${err.message}`);
@@ -35,7 +35,7 @@ const getAllProducts = (callback) => {
 
 const getProductById = (id, callback) => {
     const query = 'SELECT * FROM products WHERE id = ?';
-    
+
     connection.query(query, [id], (err, results) => {
         if (err) {
             logger.error(`Error fetching product: ${err.message}`);
@@ -52,7 +52,7 @@ const updateProduct = (id, productData, callback) => {
         SET name = ?, description = ?, price = ?, category = ?, image_url = ?, updated_at = NOW()
         WHERE id = ?
     `;
-    
+
     connection.query(query, [name, description, price, category, image_url, id], (err, result) => {
         if (err) {
             logger.error(`Error updating product: ${err.message}`);
@@ -64,7 +64,7 @@ const updateProduct = (id, productData, callback) => {
 
 const deleteProduct = (id, callback) => {
     const query = 'DELETE FROM products WHERE id = ?';
-    
+
     connection.query(query, [id], (err, result) => {
         if (err) {
             logger.error(`Error deleting product: ${err.message}`);
@@ -84,7 +84,7 @@ const createPrice = (priceData, callback) => {
         INSERT INTO prices (product_id, variant, price, currency, created_at)
         VALUES (?, ?, ?, ?, NOW())
     `;
-    
+
     connection.query(query, [product_id, variant, price, currency], (err, result) => {
         if (err) {
             logger.error(`Error creating price: ${err.message}`);
@@ -96,7 +96,7 @@ const createPrice = (priceData, callback) => {
 
 const getAllPrices = (callback) => {
     const query = 'SELECT * FROM prices ORDER BY created_at DESC';
-    
+
     connection.query(query, (err, results) => {
         if (err) {
             logger.error(`Error fetching prices: ${err.message}`);
@@ -108,7 +108,7 @@ const getAllPrices = (callback) => {
 
 const getPriceById = (id, callback) => {
     const query = 'SELECT * FROM prices WHERE id = ?';
-    
+
     connection.query(query, [id], (err, results) => {
         if (err) {
             logger.error(`Error fetching price: ${err.message}`);
@@ -125,7 +125,7 @@ const updatePrice = (id, priceData, callback) => {
         SET product_id = ?, variant = ?, price = ?, currency = ?, updated_at = NOW()
         WHERE id = ?
     `;
-    
+
     connection.query(query, [product_id, variant, price, currency, id], (err, result) => {
         if (err) {
             logger.error(`Error updating price: ${err.message}`);
@@ -137,7 +137,7 @@ const updatePrice = (id, priceData, callback) => {
 
 const deletePrice = (id, callback) => {
     const query = 'DELETE FROM prices WHERE id = ?';
-    
+
     connection.query(query, [id], (err, result) => {
         if (err) {
             logger.error(`Error deleting price: ${err.message}`);
@@ -157,7 +157,7 @@ const createPhoto = (photoData, callback) => {
         INSERT INTO photos (product_id, photo_url, alt_text, is_primary, created_at)
         VALUES (?, ?, ?, ?, NOW())
     `;
-    
+
     connection.query(query, [product_id, photo_url, alt_text, is_primary || false], (err, result) => {
         if (err) {
             logger.error(`Error creating photo: ${err.message}`);
@@ -169,7 +169,7 @@ const createPhoto = (photoData, callback) => {
 
 const getAllPhotos = (callback) => {
     const query = 'SELECT * FROM photos ORDER BY created_at DESC';
-    
+
     connection.query(query, (err, results) => {
         if (err) {
             logger.error(`Error fetching photos: ${err.message}`);
@@ -181,7 +181,7 @@ const getAllPhotos = (callback) => {
 
 const getPhotoById = (id, callback) => {
     const query = 'SELECT * FROM photos WHERE id = ?';
-    
+
     connection.query(query, [id], (err, results) => {
         if (err) {
             logger.error(`Error fetching photo: ${err.message}`);
@@ -193,7 +193,7 @@ const getPhotoById = (id, callback) => {
 
 const getPhotosByProductId = (productId, callback) => {
     const query = 'SELECT * FROM photos WHERE product_id = ? ORDER BY is_primary DESC, created_at ASC';
-    
+
     connection.query(query, [productId], (err, results) => {
         if (err) {
             logger.error(`Error fetching photos for product: ${err.message}`);
@@ -210,7 +210,7 @@ const updatePhoto = (id, photoData, callback) => {
         SET product_id = ?, photo_url = ?, alt_text = ?, is_primary = ?, updated_at = NOW()
         WHERE id = ?
     `;
-    
+
     connection.query(query, [product_id, photo_url, alt_text, is_primary || false, id], (err, result) => {
         if (err) {
             logger.error(`Error updating photo: ${err.message}`);
@@ -222,7 +222,7 @@ const updatePhoto = (id, photoData, callback) => {
 
 const deletePhoto = (id, callback) => {
     const query = 'DELETE FROM photos WHERE id = ?';
-    
+
     connection.query(query, [id], (err, result) => {
         if (err) {
             logger.error(`Error deleting photo: ${err.message}`);
@@ -239,14 +239,14 @@ module.exports = {
     getProductById,
     updateProduct,
     deleteProduct,
-    
+
     // Prices
     createPrice,
     getAllPrices,
     getPriceById,
     updatePrice,
     deletePrice,
-    
+
     // Photos
     createPhoto,
     getAllPhotos,

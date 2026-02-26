@@ -1,4 +1,4 @@
-const db = require('../config/db.config');
+const db = require('../config/db');  // Consolidated MySQL Pool
 const {
   getAllOrders: getAllOrdersQuery,
   getOrderById: getOrderByIdQuery,
@@ -17,6 +17,7 @@ class Order {
 
   static async create(newOrder) {
     try {
+      // MySQL: result.insertId instead of result.rows[0].id
       const [result] = await db.query(createOrderQuery, [
         newOrder.customer_name,
         newOrder.customer_email,
@@ -32,8 +33,9 @@ class Order {
 
   static async getAll() {
     try {
-      const [result] = await db.query(getAllOrdersQuery);
-      return result;
+      // MySQL: [rows] instead of result.rows
+      const [rows] = await db.query(getAllOrdersQuery);
+      return rows;
     } catch (error) {
       logger.error(error.message);
       throw error;
@@ -42,13 +44,14 @@ class Order {
 
   static async getById(id) {
     try {
-      const [result] = await db.query(getOrderByIdQuery, [id]);
-      if (result.length === 0) {
+      // MySQL: [rows] instead of result.rows
+      const [rows] = await db.query(getOrderByIdQuery, [id]);
+      if (rows.length === 0) {
         const error = new Error(`Order with id ${id} not found`);
         error.kind = 'not_found';
         throw error;
       }
-      return result[0];
+      return rows[0];
     } catch (error) {
       logger.error(error.message);
       throw error;
@@ -57,6 +60,7 @@ class Order {
 
   static async updateStatus(id, status) {
     try {
+      // MySQL: result.affectedRows instead of result.rowCount
       const [result] = await db.query(updateOrderStatusQuery, [status, id]);
       if (result.affectedRows === 0) {
         const error = new Error(`Order with id ${id} not found`);

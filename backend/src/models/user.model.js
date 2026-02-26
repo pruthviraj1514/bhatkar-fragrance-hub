@@ -1,4 +1,4 @@
-const db = require('../config/db.config');
+const db = require('../config/db');  // Consolidated MySQL Pool
 const { createNewUser: createNewUserQuery, findUserByEmail: findUserByEmailQuery } = require('../database/queries');
 const { logger } = require('../utils/logger');
 
@@ -12,15 +12,16 @@ class User {
 
     static async create(newUser) {
         try {
-            const result = await db.query(createNewUserQuery, 
+            // MySQL: result.insertId instead of result.rows[0].id
+            const [result] = await db.query(createNewUserQuery,
                 [
-                    newUser.firstname, 
-                    newUser.lastname, 
-                    newUser.email, 
+                    newUser.firstname,
+                    newUser.lastname,
+                    newUser.email,
                     newUser.password
                 ]);
             return {
-                id: result[0].insertId,
+                id: result.insertId,
                 firstname: newUser.firstname,
                 lastname: newUser.lastname,
                 email: newUser.email
@@ -33,6 +34,7 @@ class User {
 
     static async findByEmail(email) {
         try {
+            // MySQL: [rows] instead of result.rows
             const [rows] = await db.query(findUserByEmailQuery, [email]);
             if (rows.length) {
                 return rows[0];

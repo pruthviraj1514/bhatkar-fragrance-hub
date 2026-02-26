@@ -1,19 +1,26 @@
+require('dotenv').config();
 const http = require('http');
+const url = require('url');
+
+const apiUrl = process.env.API_BASE_URL || 'http://localhost:3000/api';
+const parsedUrl = url.parse(apiUrl);
 
 const options = {
-  hostname: 'localhost',
-  port: 3000,
-  path: '/api/products/with-images/all',
+  hostname: parsedUrl.hostname,
+  port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+  path: parsedUrl.pathname + '/products/with-images/all',
   method: 'GET'
 };
 
-const req = http.request(options, (res) => {
+const client = parsedUrl.protocol === 'https:' ? require('https') : http;
+
+const req = client.request(options, (res) => {
   let data = '';
-  
+
   res.on('data', (chunk) => {
     data += chunk;
   });
-  
+
   res.on('end', () => {
     console.log(`Status: ${res.statusCode}`);
     console.log(`Headers:`, res.headers);

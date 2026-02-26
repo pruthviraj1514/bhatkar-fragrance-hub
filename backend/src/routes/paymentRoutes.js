@@ -41,7 +41,7 @@ router.get('/health', async (req, res) => {
 
   // Check database schema for required columns
   try {
-    const db = require('../config/db.pool');
+    const db = require('../config/db');
 
     const [ordersRow] = await db.execute(
       `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS

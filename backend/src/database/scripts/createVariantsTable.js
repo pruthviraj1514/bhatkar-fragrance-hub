@@ -1,12 +1,13 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../../../.env') });
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'fragrance_db',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -42,10 +43,10 @@ async function createVariantsTable() {
     console.log('\n🔄 Migrating existing products to variants...');
 
     const products = await connection.query('SELECT id, quantity_ml, quantity_unit, price, stock FROM products');
-    
+
     for (const product of products[0]) {
       const variantName = `${product.quantity_ml}${product.quantity_unit}`;
-      
+
       // Check if variant already exists
       const [existing] = await connection.query(
         'SELECT id FROM product_variants WHERE product_id = ? AND variant_value = ? AND variant_unit = ?',

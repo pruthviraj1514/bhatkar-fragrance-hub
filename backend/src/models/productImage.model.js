@@ -1,4 +1,4 @@
-const db = require('../config/db.config');
+const db = require('../config/db');  // Consolidated MySQL Pool
 const {
   createProductImage: createProductImageQuery,
   getProductImages: getProductImagesQuery,
@@ -40,7 +40,8 @@ class ProductImage {
   static async addImage(newImage) {
     try {
       const imageFormat = newImage.imageFormat || ProductImage.extractImageFormat(newImage.imageUrl);
-      const result = await db.query(createProductImageQuery, [
+      // MySQL: result.insertId instead of result.rows[0].id
+      const [result] = await db.query(createProductImageQuery, [
         newImage.productId,
         newImage.imageUrl,
         imageFormat,
@@ -50,7 +51,7 @@ class ProductImage {
       ]);
 
       return {
-        id: result[0].insertId,
+        id: result.insertId,
         ...newImage,
         imageFormat
       };
@@ -63,6 +64,7 @@ class ProductImage {
   // Get all images for a product
   static async getProductImages(productId) {
     try {
+      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getProductImagesQuery, [productId]);
       return rows;
     } catch (error) {
@@ -74,25 +76,25 @@ class ProductImage {
   // Get product with all its images (includes product details)
   static async getProductWithImages(productId) {
     try {
+      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getProductWithImagesQuery, [productId]);
       if (rows.length === 0) {
         throw { kind: 'not_found' };
       }
 
       const product = rows[0];
-      // mysql2 returns JSON_ARRAYAGG already parsed as array
-      if (product.images && Array.isArray(product.images)) {
-        // Filter out null image objects (from products with no images)
-        product.images = product.images.filter(img => img && img.image_url !== null);
-      } else if (product.images && typeof product.images === 'string') {
-        // Fallback for string JSON (if needed)
+      // MySQL JSON_ARRAYAGG returns an array
+      if (!Array.isArray(product.images) && typeof product.images === 'string') {
         try {
-          const parsed = JSON.parse(product.images);
-          product.images = Array.isArray(parsed) ? parsed.filter(img => img && img.image_url !== null) : [];
+          product.images = JSON.parse(product.images);
         } catch (e) {
           logger.warn(`Could not parse images string for product ${productId}`);
           product.images = [];
         }
+      }
+
+      if (Array.isArray(product.images)) {
+        product.images = product.images.filter(img => img && img.image_url !== null);
       } else {
         product.images = [];
       }
@@ -103,7 +105,7 @@ class ProductImage {
       return product;
     } catch (error) {
       logger.warn(`Aggregate query failed for getProductWithImages: ${error.message}. Falling back to separate queries.`);
-      // Fallback: fetch product and images separately to support DBs without JSON aggregation
+      // Fallback: fetch product and images separately
       try {
         const productDetails = await Product.getById(productId);
         let images = await ProductImage.getProductImages(productId);
@@ -120,25 +122,25 @@ class ProductImage {
   // Get all products with their images
   static async getAllProductsWithImages() {
     try {
+      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getAllProductsWithImagesQuery);
 
       const products = rows.map(product => {
-        // mysql2 returns JSON_ARRAYAGG already parsed as array
-        let images = [];
-        if (product.images && Array.isArray(product.images)) {
-          // Filter out null image objects (from products with no images)
-          images = product.images.filter(img => img && img.image_url !== null);
-        } else if (product.images && typeof product.images === 'string') {
-          // Fallback for string JSON (if needed)
+        let images = product.images;
+        if (typeof images === 'string') {
           try {
-            const parsed = JSON.parse(product.images);
-            images = Array.isArray(parsed) ? parsed.filter(img => img && img.image_url !== null) : [];
+            images = JSON.parse(images);
           } catch (e) {
-            logger.warn(`Could not parse images string for product ${product.id}`);
             images = [];
           }
         }
-        
+
+        if (Array.isArray(images)) {
+          images = images.filter(img => img && (img.image_url !== null || img.url !== null));
+        } else {
+          images = [];
+        }
+
         return {
           ...product,
           price: parseFloat(product.price),
@@ -170,7 +172,8 @@ class ProductImage {
   static async updateImage(imageId, productId, updates) {
     try {
       const imageFormat = updates.imageFormat || ProductImage.extractImageFormat(updates.imageUrl);
-      const result = await db.query(updateProductImageQuery, [
+      // MySQL: result.affectedRows instead of result.rowCount
+      const [result] = await db.query(updateProductImageQuery, [
         updates.imageUrl,
         imageFormat,
         updates.altText,
@@ -179,7 +182,7 @@ class ProductImage {
         productId
       ]);
 
-      if (result[0].affectedRows === 0) {
+      if (result.affectedRows === 0) {
         throw { kind: 'not_found' };
       }
 
@@ -193,9 +196,10 @@ class ProductImage {
   // Delete a single image
   static async deleteImage(imageId, productId) {
     try {
-      const result = await db.query(deleteProductImageQuery, [imageId, productId]);
+      // MySQL: result.affectedRows instead of result.rowCount
+      const [result] = await db.query(deleteProductImageQuery, [imageId, productId]);
 
-      if (result[0].affectedRows === 0) {
+      if (result.affectedRows === 0) {
         throw { kind: 'not_found' };
       }
 
@@ -209,8 +213,9 @@ class ProductImage {
   // Delete all images for a product
   static async deleteProductImages(productId) {
     try {
-      const result = await db.query(deleteProductImagesQuery, [productId]);
-      return { message: `${result[0].affectedRows} images deleted successfully` };
+      // MySQL: result.affectedRows instead of result.rowCount
+      const [result] = await db.query(deleteProductImagesQuery, [productId]);
+      return { message: `${result.affectedRows} images deleted successfully` };
     } catch (error) {
       logger.error(`Delete product images error: ${error.message}`);
       throw error;

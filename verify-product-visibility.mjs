@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 // Load environment variables
-dotenv.config({ path: './backend/.env' });
+dotenv.config({ path: './.env' });
 
 // Database connection
 const pool = mysql.createPool({
@@ -44,7 +44,7 @@ async function verifyProductVisibility() {
 
     console.log(`   Total Products: ${products.length}`);
     console.log(`   Unique IDs: ${uniqueIds.size}`);
-    
+
     if (productIds.length === uniqueIds.size) {
       console.log('   ✅ All product IDs are UNIQUE\n');
     } else {
@@ -72,14 +72,14 @@ async function verifyProductVisibility() {
 
     console.log('   Product ID │ Name                          │ Images │ Status');
     console.log('   ───────────┼───────────────────────────────┼────────┼─────────');
-    
+
     for (const stat of imageStats) {
       const name = stat.name ? stat.name.substring(0, 30).padEnd(30) : 'Unknown'.padEnd(30);
       const images = stat.image_count || 0;
       const status = images > 0 ? '✅ Has images' : '⚠️  No images';
-      
+
       console.log(`   ${String(stat.product_id).padEnd(11)}│ ${name} │ ${String(images).padStart(6)} │ ${status}`);
-      
+
       if (images > 0) {
         productsWithImages++;
         totalImages += images;
@@ -114,12 +114,12 @@ async function verifyProductVisibility() {
           imageErrors++;
           console.log(`   ❌ Image ${img.image_id}: Linked to non-existent product ${img.product_id}`);
         }
-        
+
         if (currentProduct !== img.product_id) {
           console.log(`\n   Product ${img.product_id} (${img.product_name || 'INVALID'}):`);
           currentProduct = img.product_id;
         }
-        
+
         const cloudinaryCheck = img.image_url && img.image_url.includes('cloudinary') ? '☁️' : '❌';
         const thumbmark = img.is_thumbnail ? '🖼️ Main' : '   ';
         console.log(`     └─ Image ${img.image_id} (Order: ${img.image_order}) ${cloudinaryCheck} ${thumbmark}`);
@@ -143,7 +143,7 @@ async function verifyProductVisibility() {
 
       console.log(`   Product ${product.id} (${product.name}):`);
       console.log(`   └─ API would return: ${images.length} images`);
-      
+
       if (images.length === 0) {
         console.log('      ⚠️  No images to display');
       } else {
@@ -155,7 +155,7 @@ async function verifyProductVisibility() {
 
     // Test 5: Carousel readiness
     console.log('🔍 Test 5: Carousel Display Readiness...\n');
-    
+
     let carouselReady = true;
     for (const stat of imageStats) {
       const images = stat.image_count || 0;
@@ -169,7 +169,7 @@ async function verifyProductVisibility() {
 
     // Test 6: Data structure validation
     console.log('🔍 Test 6: Image Data Structure...\n');
-    
+
     if (allImages.length > 0) {
       const sample = allImages[0];
       console.log('   Sample image record:');

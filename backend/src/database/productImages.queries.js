@@ -1,19 +1,25 @@
+// ============================================================================
+// PRODUCT IMAGES QUERIES - MySQL Compatible
+// ============================================================================
+// Converted back to MySQL from PostgreSQL
+// - $1 placeholders → ?
+// - AUTO_INCREMENT for primary key
+// - Using JSON_ARRAYAGG and JSON_OBJECT for joined data
+// ============================================================================
+
 const createTableProductImages = `
 CREATE TABLE IF NOT EXISTS product_images (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
     image_url VARCHAR(500) NOT NULL,
     image_format VARCHAR(50),
     alt_text VARCHAR(255),
     image_order INT DEFAULT 1,
     is_thumbnail BOOLEAN DEFAULT FALSE,
-    created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    KEY idx_product_id (product_id),
-    KEY idx_image_order (product_id, image_order)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    created_on TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_on TIMESTAMP NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+)
 `;
 
 const createProductImage = `
@@ -32,14 +38,16 @@ const getProductWithImages = `
 SELECT 
   p.id, p.name, p.brand, p.price, p.category, p.concentration, 
   p.description, p.stock, p.created_on, p.is_best_seller, p.is_active,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'id', pi.id,
-      'image_url', pi.image_url,
-      'image_format', pi.image_format,
-      'alt_text', pi.alt_text,
-      'image_order', pi.image_order,
-      'is_thumbnail', pi.is_thumbnail
+  IF(COUNT(pi.id) = 0, JSON_ARRAY(),
+    JSON_ARRAYAGG(
+      JSON_OBJECT(
+        'id', pi.id,
+        'image_url', pi.image_url,
+        'image_format', pi.image_format,
+        'alt_text', pi.alt_text,
+        'image_order', pi.image_order,
+        'is_thumbnail', pi.is_thumbnail
+      )
     )
   ) as images
 FROM products p
@@ -52,14 +60,16 @@ const getAllProductsWithImages = `
 SELECT 
   p.id, p.name, p.brand, p.price, p.category, p.concentration, 
   p.description, p.stock, p.created_on, p.is_best_seller, p.is_active,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'id', pi.id,
-      'image_url', pi.image_url,
-      'image_format', pi.image_format,
-      'alt_text', pi.alt_text,
-      'image_order', pi.image_order,
-      'is_thumbnail', pi.is_thumbnail
+  IF(COUNT(pi.id) = 0, JSON_ARRAY(),
+    JSON_ARRAYAGG(
+      JSON_OBJECT(
+        'id', pi.id,
+        'image_url', pi.image_url,
+        'image_format', pi.image_format,
+        'alt_text', pi.alt_text,
+        'image_order', pi.image_order,
+        'is_thumbnail', pi.is_thumbnail
+      )
     )
   ) as images
 FROM products p
@@ -70,7 +80,7 @@ ORDER BY p.created_on DESC
 
 const updateProductImage = `
 UPDATE product_images
-SET image_url = ?, image_format = ?, alt_text = ?, image_order = ?
+SET image_url = ?, image_format = ?, alt_text = ?, image_order = ?, updated_on = NOW()
 WHERE id = ? AND product_id = ?
 `;
 

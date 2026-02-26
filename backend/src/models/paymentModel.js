@@ -4,7 +4,7 @@
  * Database operations for payments
  */
 
-const db = require('../config/db.pool');
+const db = require('../config/db');
 const { logger } = require('../utils/logger');
 
 class PaymentModel {
@@ -14,7 +14,7 @@ class PaymentModel {
   static async create(paymentData) {
     try {
       const { orderId, razorpayPaymentId, razorpaySignature, status = 'PENDING' } = paymentData;
-      
+
       const [result] = await db.execute(
         `INSERT INTO payments (order_id, razorpay_payment_id, razorpay_signature, payment_status, created_at, updated_at)
          VALUES (?, ?, ?, ?, NOW(), NOW())`,

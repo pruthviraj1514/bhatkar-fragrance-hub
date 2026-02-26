@@ -1,45 +1,74 @@
-# PRODUCTION MODE CONVERSION - COMPLETED
+# Supabase PostgreSQL Migration Plan - Progress
 
-## Task: Convert entire codebase from localhost to production environment-based URLs
+## ✅ Completed Steps
 
-### Files Completed:
+### Phase 1: PostgreSQL Driver Installation
+- [x] Installed pg driver in backend
 
-1. **backend/src/index.production.js** ✅
-   - API_BASE_URL now uses correct production URL
-   - Logger URLs use dynamic variables
-   - CORS configured for production
+### Phase 2: Database Configuration  
+- [x] Created supabase.db.config.js - PostgreSQL connection with pooler (port 6543)
+- [x] Created db.compat.js - MySQL compatibility layer
 
-2. **backend/src/index.js** ✅
-   - Already using process.env.PORT
+### Phase 3: Schema Conversion
+- [x] Created supabase-schema.sql - PostgreSQL schema for all tables
 
-3. **backend/src/app.js** ✅
-   - CORS already configured for production
+### Phase 4: Query Updates
+- [x] products.queries.js ($1 placeholders, RETURNING)
+- [x] queries.js (users) 
+- [x] productImages.queries.js (JSON_AGG)
+- [x] orders.queries.js
+- [x] productVariants.queries.js
 
-4. **src/lib/axios.ts** ✅
-   - Fixed fallback URL to correct production URL
+### Phase 5: Model Updates
+- [x] product.model.js (result.rows[0].id)
+- [x] user.model.js
+- [x] productImage.model.js
+- [x] order.model.js
 
-5. **backend/src/services/imageURLService.js** ✅ (NEW)
-   - Added generateDirectUrl() for fast direct URLs (no S3 signing)
-   - Added generateDirectUrlsForImages() for batch processing
-   - Added refreshProductDirectImageUrls() and refreshProductsDirectImageUrls()
+### Phase 6: Application Updates
+- [x] index.js (PostgreSQL INFORMATION_SCHEMA)
+- [x] app.js (/api/health with DB check)
 
-6. **backend/src/controllers/products.optimized.controller.js** ✅ (NEW)
-   - Updated getAllProducts to use generateDirectUrlsForImages (FAST)
+---
 
-### Performance Improvements Made:
-- Fast direct URLs for product lists (no S3 API calls needed)
-- Cached responses with proper TTL
-- Direct URL format: BASE_STORAGE_URL/objectKey
+## 📋 Remaining Manual Steps
 
-### Environment Variables to Document:
-- DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT
-- PORT
-- JWT_SECRET_KEY
-- S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
-- RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_URL
-- VITE_API_BASE_URL
-- FRONTEND_URL
+### Step 1: Run Schema in Supabase Dashboard
+- [ ] Go to: https://supabase.com/dashboard/project/tntyfwpaxiyaovdiphql/sql
+- [ ] Copy `backend/database/supabase-schema.sql`
+- [ ] Run in SQL Editor
 
-### Production URLs:
-- Frontend: https://bhatkar-fragrance-hub-5.onrender.com
-- Backend API: https://bhatkar-fragrance-hub-5.onrender.com/api
+### Step 2: Set Environment Variables
+```
+SUPABASE_DB_URL=postgres://postgres:[PASSWORD]@db.tntyfwpaxiyaovdiphql.supabase.co:6543/postgres
+```
+
+### Step 3: Data Migration (Optional - if keeping existing data)
+- [ ] Export Railway MySQL as CSV
+- [ ] Import to Supabase PostgreSQL
+
+### Step 4: Test & Deploy
+- [ ] Test /api/health endpoint
+- [ ] Deploy to Render
+
+---
+
+## Files Modified
+
+| File | Status |
+|------|--------|
+| backend/package.json | pg driver added |
+| backend/src/config/supabase.db.config.js | NEW |
+| backend/src/config/db.compat.js | NEW |
+| backend/database/supabase-schema.sql | NEW |
+| backend/src/database/products.queries.js | UPDATED |
+| backend/src/database/queries.js | UPDATED |
+| backend/src/database/productImages.queries.js | UPDATED |
+| backend/src/database/orders.queries.js | UPDATED |
+| backend/src/database/productVariants.queries.js | UPDATED |
+| backend/src/models/product.model.js | UPDATED |
+| backend/src/models/user.model.js | UPDATED |
+| backend/src/models/productImage.model.js | UPDATED |
+| backend/src/models/order.model.js | UPDATED |
+| backend/src/index.js | UPDATED |
+| backend/src/app.js | UPDATED |

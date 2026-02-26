@@ -1,19 +1,21 @@
 import http from 'http';
+import dotenv from 'dotenv';
+dotenv.config({ path: './.env' });
 
 const options = {
-  hostname: 'localhost',
-  port: 3000,
+  hostname: process.env.API_HOST || 'localhost',
+  port: process.env.API_PORT || 5000,
   path: '/api/products/with-images/all',
   method: 'GET'
 };
 
 const req = http.request(options, (res) => {
   let data = '';
-  
+
   res.on('data', (chunk) => {
     data += chunk;
   });
-  
+
   res.on('end', () => {
     console.log(`Status: ${res.statusCode}`);
     console.log(`Headers:`, res.headers);

@@ -6,14 +6,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function checkDatabase() {
   try {
     console.log('🔍 Connecting to Railway database...');
     console.log('Host:', process.env.DB_HOST);
     console.log('Database:', process.env.DB_NAME);
-    
+
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USER,

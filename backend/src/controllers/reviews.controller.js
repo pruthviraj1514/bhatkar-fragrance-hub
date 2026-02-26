@@ -166,7 +166,7 @@ exports.updateReview = asyncHandler(async (req, res) => {
     if (!existing) return res.status(404).send({ status: 'error', message: 'Review not found' });
 
     const query = `UPDATE reviews SET reviewer_name = ?, rating = ?, review_text = ?, verified_purchase = ? WHERE id = ?`;
-    await require('../config/db.config').query(query, [
+    await require('../config/db').query(query, [
         reviewer_name || existing.reviewer_name,
         rating !== undefined ? rating : existing.rating,
         review_text || existing.review_text,

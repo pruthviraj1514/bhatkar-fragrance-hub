@@ -1,5 +1,5 @@
-const db = require('../config/db.config');
-const { 
+const db = require('../config/db');  // Consolidated MySQL Pool
+const {
     createProduct: createProductQuery,
     getAllProducts: getAllProductsQuery,
     getProductById: getProductByIdQuery,
@@ -40,7 +40,8 @@ class Product {
 
     static async create(newProduct) {
         try {
-            const result = await db.query(createProductQuery, 
+            // MySQL: result.insertId instead of result.rows[0].id
+            const [result] = await db.query(createProductQuery,
                 [
                     newProduct.name,
                     newProduct.brand,
@@ -59,8 +60,9 @@ class Product {
                     newProduct.is_luxury_product || false,
                     newProduct.is_active !== undefined ? newProduct.is_active : 0
                 ]);
+
             return {
-                id: result[0].insertId,
+                id: result.insertId,
                 ...newProduct,
                 price: parseFloat(newProduct.price)
             };
@@ -72,6 +74,7 @@ class Product {
 
     static async getAll() {
         try {
+            // MySQL: [rows] instead of result.rows
             const [rows] = await db.query(getAllProductsQuery);
             return rows.map(convertProduct);
         } catch (error) {
@@ -82,6 +85,7 @@ class Product {
 
     static async getById(id) {
         try {
+            // MySQL: [rows] instead of result.rows
             const [rows] = await db.query(getProductByIdQuery, [id]);
             if (rows.length) {
                 return convertProduct(rows[0]);
@@ -95,7 +99,8 @@ class Product {
 
     static async update(id, updatedProduct) {
         try {
-            const result = await db.query(updateProductQuery,
+            // MySQL: result.affectedRows instead of result.rowCount
+            const [result] = await db.query(updateProductQuery,
                 [
                     updatedProduct.name,
                     updatedProduct.brand,
@@ -115,7 +120,8 @@ class Product {
                     updatedProduct.is_active !== undefined ? updatedProduct.is_active : 0,
                     id
                 ]);
-            if (result[0].affectedRows === 0) {
+
+            if (result.affectedRows === 0) {
                 throw { kind: "not_found" };
             }
             return {
@@ -131,8 +137,9 @@ class Product {
 
     static async delete(id) {
         try {
-            const result = await db.query(deleteProductQuery, [id]);
-            if (result[0].affectedRows === 0) {
+            // MySQL: result.affectedRows instead of result.rowCount
+            const [result] = await db.query(deleteProductQuery, [id]);
+            if (result.affectedRows === 0) {
                 throw { kind: "not_found" };
             }
             return { message: "Product deleted successfully" };

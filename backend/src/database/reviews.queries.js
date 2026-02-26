@@ -1,5 +1,5 @@
 // Reviews database queries
-const db = require('../config/db.config');
+const db = require('../config/db');
 
 // Get product reviews (approved and active only)
 const getProductReviews = async (productId) => {

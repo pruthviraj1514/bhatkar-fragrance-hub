@@ -19,7 +19,6 @@ const app = express();
 // ===== CRITICAL: CORS MUST BE FIRST - Apply before all other middleware =====
 // Production CORS - allow only production frontend
 const corsOrigins = [
-  'https://bhatkar-fragrance-hub-5.onrender.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -33,7 +32,7 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Max-Age", "3600");
-  
+
   // Handle preflight requests
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -67,9 +66,9 @@ app.get("/health", (req, res) => {
     accessKey: process.env.S3_ACCESS_KEY ? "✅ SET" : "❌ NOT SET",
     secretKey: process.env.S3_SECRET_KEY ? "✅ SET" : "❌ NOT SET",
   };
-  
+
   console.log("🏥 Health check requested. Railway Storage config:", railwayConfig);
-  
+
   res.status(200).json({
     status: "healthy",
     timestamp: new Date().toISOString(),
@@ -78,14 +77,29 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ===== API HEALTH CHECK ENDPOINT =====
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    message: "API is healthy"
-  });
+// ===== API HEALTH CHECK ENDPOINT WITH DATABASE =====
+app.get("/api/health", async (req, res) => {
+  const db = require("./config/db");
+
+  try {
+    // Try database health check
+    const [rows] = await db.query('SELECT 1');
+
+    res.status(200).json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      message: "API is healthy",
+      database: { status: 'connected', result: rows.length > 0 ? 'OK' : 'ERROR' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      timestamp: new Date().toISOString(),
+      message: "API starting or Database connection failed",
+      error: error.message
+    });
+  }
 });
 
 app.get("/", (req, res) => {
@@ -145,7 +159,7 @@ app.use((req, res) => {
   const availableRoutes = [
     'GET  /health',
     'GET  /',
-    'GET  /health',
+    'GET  /api/health',
     'POST /api/auth/signin',
     'POST /api/auth/signup',
     'GET  /api/products/with-images/all',
@@ -158,7 +172,7 @@ app.use((req, res) => {
   ];
 
   console.error(`❌ 404 ERROR: ${req.method} ${req.path} not found`);
-  
+
   res.status(404).json({
     status: "error",
     message: `Route ${req.method} ${req.path} not found`,

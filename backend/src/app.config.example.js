@@ -71,7 +71,7 @@ app.use((error, req, res, next) => {
 // ===== Server Startup =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✨ Server running on http://localhost:${PORT}`);
+  console.log(`✨ Server running on port ${PORT}`);
   console.log(`✅ Payment endpoints ready at /api/payment`);
 });
 

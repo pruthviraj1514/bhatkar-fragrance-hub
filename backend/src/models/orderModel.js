@@ -4,7 +4,7 @@
  * Database operations for orders
  */
 
-const db = require('../config/db.pool');
+const db = require('../config/db');
 const { logger } = require('../utils/logger');
 
 class OrderModel {
@@ -14,7 +14,7 @@ class OrderModel {
   static async create(orderData) {
     try {
       const { userId, productId, quantity, totalAmount, razorpayOrderId } = orderData;
-      
+
       const [result] = await db.execute(
         `INSERT INTO orders (user_id, product_id, quantity, total_amount, razorpay_order_id, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
