@@ -145,6 +145,17 @@ exports.getProductWithImages = async (req, res) => {
         message: `Product with id ${req.params.id} not found`
       });
     }
+
+    // Diagnostic metadata
+    let dbMeta = {};
+    try {
+      const db = require('../config/db');
+      const result = await db.pool.query('SELECT current_database(), current_user, inet_server_addr()');
+      dbMeta = result.rows[0];
+    } catch (e) {
+      dbMeta = { error: 'Could not fetch metadata', details: e.message };
+    }
+
     logger.error(`Get product with images error: ${error.message}`);
     console.error("FULL ERROR DETAIL:", error);
 
@@ -153,6 +164,7 @@ exports.getProductWithImages = async (req, res) => {
       message: error.message || 'Error retrieving product',
       error: error.toString(),
       stack: error.stack,
+      dbMetadata: dbMeta,
       hint: "Check if all columns exist and if imageURLService is correctly required"
     });
   }
