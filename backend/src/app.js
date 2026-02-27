@@ -111,9 +111,16 @@ app.get("/", (req, res) => {
   });
 });
 
-// ===== DEBUG MIDDLEWARE - Log all incoming requests =====
+// ===== DEBUG MIDDLEWARE - Log all incoming requests and timing =====
 app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.path}`);
+  const start = Date.now();
+  console.log(`📨 [START] ${req.method} ${req.path}`);
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`📬 [FINISH] ${req.method} ${req.path} - ${res.statusCode} [${duration}ms]`);
+  });
+
   next();
 });
 

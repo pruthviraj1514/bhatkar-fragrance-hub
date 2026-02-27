@@ -1,60 +1,43 @@
 /**
- * CONSOLIDATED DATABASE CONFIGURATION
- * ===================================
- * This file replaces db.config.js and db.pool.js to provide a single,
- * optimized MySQL connection pool using the project's root .env.
+ * CONSOLIDATED DATABASE CONFIGURATION (POSTGRESQL)
+ * ================================================
+ * This file replaces db.config.js, db.pool.js, and db.compat.js 
+ * to provide a single, optimized PostgreSQL connection pool using pg.
  */
 
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const path = require('path');
 // Ensure environment variables are loaded from the root .env
-// backend/src/config/db.js -> ../../../.env
 const envPath = path.join(__dirname, '../../../.env');
 require('dotenv').config({ path: envPath });
 
 const { logger } = require('../utils/logger');
 
-const {
-    DB_HOST,
-    DB_USER,
-    DB_PASSWORD,
-    DB_PASS,
-    DB_NAME,
-    DB_PORT = 3306,
-    NODE_ENV = 'development'
-} = process.env;
+// We will use DATABASE_URL directly if provided, falling back to SUPABASE_DB_URL
+const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-if (!DB_HOST) {
-    logger.error(`❌ DB_HOST is missing! Checked .env at: ${envPath}`);
+if (!connectionString) {
+    logger.error(`❌ DATABASE_URL or SUPABASE_DB_URL is missing! Checked .env at: ${envPath}`);
 }
 
-// Support both DB_PASSWORD and DB_PASS (Railway often uses DB_PASS)
-const dbPassword = DB_PASSWORD || DB_PASS || '';
-
 const poolConfig = {
-    host: DB_HOST,
-    user: DB_USER,
-    password: dbPassword,
-    database: DB_NAME,
-    port: Number(DB_PORT),
-    waitForConnections: true,
-    connectionLimit: NODE_ENV === 'production' ? 15 : 10,
-    queueLimit: 0,
-    // Removed enableKeepAlive for compatibility
-    charset: 'utf8mb4',
-    connectTimeout: 30000,
-    // Try without SSL first to rule it out, or use simple boolean
-    ssl: NODE_ENV === 'production' ? { rejectUnauthorized: false } : null,
+    connectionString: connectionString,
+    // Connection Pool Settings
+    max: NODE_ENV === 'production' ? 15 : 10,  // Max connections
+    idleTimeoutMillis: 30000,  // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 10000,  // Return error after 10s if connection not established
+    // SSL Configuration for Supabase
+    ssl: {
+        rejectUnauthorized: false
+    }
 };
 
-logger.info(`📊 Database Initialization:
-  Host: ${DB_HOST}
-  User: ${DB_USER}
-  Database: ${DB_NAME}
-  Port: ${poolConfig.port}
+logger.info(`📊 Database Initialization (PostgreSQL):
+  Max Pool Size: ${poolConfig.max}
   Env: ${NODE_ENV}`);
 
-const pool = mysql.createPool(poolConfig);
+const pool = new Pool(poolConfig);
 
 /**
  * Verify connectivity on startup with retry logic
@@ -62,10 +45,10 @@ const pool = mysql.createPool(poolConfig);
 async function verifyConnection(maxAttempts = 5) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            const connection = await pool.getConnection();
-            await connection.ping();
-            connection.release();
-            logger.info('✅ Database pool verified successfully');
+            const client = await pool.connect();
+            const result = await client.query('SELECT NOW()');
+            client.release();
+            logger.info('✅ PostgreSQL Database pool verified successfully - Time:', result.rows[0].now);
             return true;
         } catch (err) {
             logger.error(`❌ DB Connection failed (attempt ${attempt}/${maxAttempts}): ${err.message}`);
@@ -84,19 +67,38 @@ async function verifyConnection(maxAttempts = 5) {
  * Execute query and return single row
  */
 async function queryOne(sql, params = []) {
-    const [results] = await pool.execute(sql, params);
-    return results.length > 0 ? results[0] : null;
+    const result = await pool.query(sql, params);
+    return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 // Initial verification
 verifyConnection().catch(err => logger.error('Unhandled DB verification error:', err));
 
+const queryWrapper = async (text, params) => {
+    try {
+        const res = await pool.query(text, params);
+        if (['INSERT', 'UPDATE', 'DELETE'].includes(res.command)) {
+            const resultObj = res.rows.length > 0 ? { ...res.rows[0] } : {};
+            resultObj.insertId = resultObj.id || null;
+            resultObj.affectedRows = res.rowCount;
+            // Returning an array where first element is result object
+            return [resultObj, res.fields];
+        }
+        // Returning an array where first element is rows array
+        return [res.rows, res.fields];
+    } catch (err) {
+        logger.error(`Database query error: ${err.message}\nQuery: ${text}`);
+        throw err;
+    }
+};
+
+// Expose standard interfaces for querying
 module.exports = {
-    query: (sql, params) => pool.query(sql, params),
-    execute: (sql, params) => pool.execute(sql, params),
-    executeQuery: (sql, params) => pool.execute(sql, params),
+    query: queryWrapper,
+    execute: queryWrapper,
+    executeQuery: queryWrapper,
     queryOne,
-    getConnection: () => pool.getConnection(),
+    getConnection: () => pool.connect(),
     pool: pool,
     verifyConnection
 };

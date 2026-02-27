@@ -14,11 +14,11 @@ exports.getProductVariants = async (req, res) => {
   }
 
   try {
-    const [results] = await db.query(variantQueries.getVariantsByProductId, [productId]);
+    const result = await db.query(variantQueries.getVariantsByProductId, [productId]);
     return res.status(200).json({
       status: 'success',
-      data: results || [],
-      total: results ? results.length : 0
+      data: result.rows || [],
+      total: result.rows ? result.rows.length : 0
     });
   } catch (err) {
     logger.error(`Error fetching variants: ${err.message}`);
@@ -41,8 +41,8 @@ exports.getVariant = async (req, res) => {
   }
 
   try {
-    const [results] = await db.query(variantQueries.getVariantById, [variantId]);
-    if (!results || results.length === 0) {
+    const result = await db.query(variantQueries.getVariantById, [variantId]);
+    if (!result.rows || result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found'
@@ -51,7 +51,7 @@ exports.getVariant = async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      data: results[0]
+      data: result.rows[0]
     });
   } catch (err) {
     logger.error(`Error fetching variant: ${err.message}`);
@@ -79,7 +79,7 @@ exports.createVariant = async (req, res) => {
   const isActive = true;
 
   try {
-    const [result] = await db.query(
+    const result = await db.query(
       variantQueries.createVariant,
       [productId, variant_name, variant_value, unit, price, stock, isActive]
     );
@@ -88,7 +88,7 @@ exports.createVariant = async (req, res) => {
       status: 'success',
       message: 'Variant created successfully',
       data: {
-        id: result.insertId,
+        id: result.rows[0].id,
         product_id: productId,
         variant_name,
         variant_value,
@@ -130,7 +130,7 @@ exports.updateVariant = async (req, res) => {
   const active = is_active !== undefined ? is_active : 1;
 
   try {
-    const [result] = await db.query(
+    const result = await db.query(
       variantQueries.updateVariant,
       [variant_name, variant_value, unit, price, stock, active, variantId]
     );

@@ -32,7 +32,7 @@ async function logPayment(orderId, paymentId, logType, action, requestData, resp
     await db.query(
       `INSERT INTO payment_logs 
        (order_id, payment_id, log_type, action, request_data, response_data, status_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         orderId || null,
         paymentId || null,
@@ -113,7 +113,7 @@ exports.createOrder = async (req, res) => {
     console.log(`📦 Creating order: ${orderNumber}, Amount: ₹${totalAmount}`);
 
     connection = await db.getConnection();
-    await connection.beginTransaction();
+    await connection.query('BEGIN');
 
     try {
       // ===== STEP 1: Create Razorpay Order =====
@@ -133,14 +133,14 @@ exports.createOrder = async (req, res) => {
 
       // ===== STEP 2: Insert into orders table =====
       console.log(`💾 Saving to database...`);
-      const [orderResult] = await connection.execute(
+      const orderResult = await connection.query(
         `INSERT INTO orders 
          (user_id, order_number, total_amount, razorpay_order_id, status, items_count)
-         VALUES (?, ?, ?, ?, 'PENDING', ?)`,
+         VALUES ($1, $2, $3, $4, 'PENDING', $5) RETURNING id`,
         [userId, orderNumber, totalAmount, razorpayOrderId, quantity]
       );
 
-      const orderId = orderResult.insertId;
+      const orderId = orderResult.rows[0].id;
 
       // ===== STEP 3: Log this action =====
       await logPayment(
@@ -153,7 +153,7 @@ exports.createOrder = async (req, res) => {
         201
       );
 
-      await connection.commit();
+      await connection.query('COMMIT');
 
       // ===== RETURN TO FRONTEND =====
       console.log(`✅ Order created successfully: ${orderNumber}`);
@@ -170,7 +170,7 @@ exports.createOrder = async (req, res) => {
         },
       });
     } catch (error) {
-      await connection.rollback();
+      await connection.query('ROLLBACK');
       throw error;
     }
   } catch (error) {
@@ -220,23 +220,23 @@ exports.verifyPayment = async (req, res) => {
     console.log(`🔐 Verifying payment for order: ${orderId}`);
 
     connection = await db.getConnection();
-    await connection.beginTransaction();
+    await connection.query('BEGIN');
 
     try {
       // ===== STEP 1: Get order details =====
-      const [orders] = await connection.execute(
-        'SELECT * FROM orders WHERE id = ? LIMIT 1',
+      const orderData = await connection.query(
+        'SELECT * FROM orders WHERE id = $1 LIMIT 1',
         [orderId]
       );
 
-      if (orders.length === 0) {
+      if (orderData.rows.length === 0) {
         return res.status(404).json({
           status: 'error',
           message: 'Order not found',
         });
       }
 
-      const order = orders[0];
+      const order = orderData.rows[0];
       const { razorpay_order_id } = order;
 
       // ===== STEP 2: Verify Razorpay signature =====
@@ -261,10 +261,10 @@ exports.verifyPayment = async (req, res) => {
       console.log(`📊 Payment status from Razorpay: ${payment.status}`);
 
       // ===== STEP 4: Insert into payments table =====
-      const [paymentResult] = await connection.execute(
+      const paymentResult = await connection.query(
         `INSERT INTO payments 
          (order_id, razorpay_payment_id, razorpay_signature, payment_status, payment_method, amount)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
         [
           orderId,
           razorpay_payment_id,
@@ -277,14 +277,14 @@ exports.verifyPayment = async (req, res) => {
 
       // ===== STEP 5: Update order status =====
       if (payment.status === 'captured') {
-        await connection.execute(
-          'UPDATE orders SET status = ? WHERE id = ?',
+        await connection.query(
+          'UPDATE orders SET status = $1 WHERE id = $2',
           ['PAID', orderId]
         );
         console.log(`✅ Order ${orderId} marked as PAID`);
       } else {
-        await connection.execute(
-          'UPDATE orders SET status = ? WHERE id = ?',
+        await connection.query(
+          'UPDATE orders SET status = $1 WHERE id = $2',
           ['FAILED', orderId]
         );
         console.log(`❌ Payment not captured for order ${orderId}`);
@@ -293,7 +293,7 @@ exports.verifyPayment = async (req, res) => {
       // ===== STEP 6: Log payment verification =====
       await logPayment(
         orderId,
-        paymentResult.insertId,
+        paymentResult.rows[0].id,
         'API_CALL',
         'verify_payment',
         { razorpay_payment_id, razorpay_signature },
@@ -301,7 +301,7 @@ exports.verifyPayment = async (req, res) => {
         200
       );
 
-      await connection.commit();
+      await connection.query('COMMIT');
 
       // ===== RETURN RESPONSE =====
       res.status(200).json({
@@ -389,12 +389,12 @@ exports.handleWebhook = async (req, res) => {
       // Update payment status
       if (orderId) {
         await db.query(
-          `UPDATE payments SET payment_status = ? WHERE razorpay_payment_id = ?`,
+          `UPDATE payments SET payment_status = $1 WHERE razorpay_payment_id = $2`,
           ['SUCCESS', paymentId]
         );
 
         await db.query(
-          `UPDATE orders SET status = ? WHERE id = ?`,
+          `UPDATE orders SET status = $1 WHERE id = $2`,
           ['PAID', orderId]
         );
 
@@ -410,13 +410,13 @@ exports.handleWebhook = async (req, res) => {
       // Update payment status
       if (orderId) {
         await db.query(
-          `UPDATE payments SET payment_status = ?, error_code = ?, error_message = ? 
-           WHERE razorpay_payment_id = ?`,
+          `UPDATE payments SET payment_status = $1, error_code = $2, error_message = $3 
+           WHERE razorpay_payment_id = $4`,
           ['FAILED', payment.error_code || null, payment.error_description || null, paymentId]
         );
 
         await db.query(
-          `UPDATE orders SET status = ? WHERE id = ?`,
+          `UPDATE orders SET status = $1 WHERE id = $2`,
           ['FAILED', orderId]
         );
 
@@ -429,28 +429,28 @@ exports.handleWebhook = async (req, res) => {
       const paymentId = refund.payment_id;
 
       // Get order ID from payment
-      const [payments] = await db.query(
-        'SELECT order_id FROM payments WHERE razorpay_payment_id = ?',
+      const payments = await db.query(
+        'SELECT id, order_id FROM payments WHERE razorpay_payment_id = $1',
         [paymentId]
       );
 
-      if (payments.length > 0) {
-        const orderId = payments[0].order_id;
+      if (payments.rows && payments.rows.length > 0) {
+        const orderId = payments.rows[0].order_id;
 
         // Insert refund record
         await db.query(
           `INSERT INTO refunds (payment_id, razorpay_refund_id, refund_amount, refund_status)
-           VALUES (?, ?, ?, 'PROCESSED')`,
-          [payments[0].id, refund.id, refund.amount / 100]
+           VALUES ($1, $2, $3, 'PROCESSED')`,
+          [payments.rows[0].id, refund.id, refund.amount / 100]
         );
 
         // Update order status
         await db.query(
-          `UPDATE orders SET status = ? WHERE id = ?`,
+          `UPDATE orders SET status = $1 WHERE id = $2`,
           ['REFUNDED', orderId]
         );
 
-        await logPayment(orderId, payments[0].id, 'WEBHOOK', 'refund_processed', event, null, 200);
+        await logPayment(orderId, payments.rows[0].id, 'WEBHOOK', 'refund_processed', event, null, 200);
       }
     }
 
@@ -488,23 +488,23 @@ exports.getOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const [orders] = await db.query(
-      'SELECT * FROM orders WHERE id = ?',
+    const orders = await db.query(
+      'SELECT * FROM orders WHERE id = $1',
       [orderId]
     );
 
-    if (orders.length === 0) {
+    if (orders.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Order not found',
       });
     }
 
-    const order = orders[0];
+    const order = orders.rows[0];
 
     // Get latest payment
-    const [payments] = await db.query(
-      'SELECT * FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1',
+    const payments = await db.query(
+      'SELECT * FROM payments WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1',
       [orderId]
     );
 
@@ -512,7 +512,7 @@ exports.getOrderStatus = async (req, res) => {
       status: 'success',
       data: {
         ...order,
-        payment: payments.length > 0 ? payments[0] : null,
+        payment: payments.rows.length > 0 ? payments.rows[0] : null,
       },
     });
   } catch (error) {

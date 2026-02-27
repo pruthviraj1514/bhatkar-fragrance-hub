@@ -1,9 +1,9 @@
 // ============================================================================
-// USERS QUERIES - MySQL Compatible
+// USERS QUERIES - PostgreSQL Compatible
 // ============================================================================
-// Converted back to MySQL from PostgreSQL
-// - $1 placeholders → ?
-// - AUTO_INCREMENT for primary key
+// Converted to PostgreSQL from MySQL
+// - ? placeholders → $1
+// - SERIAL for primary key
 // ============================================================================
 
 const { DB_NAME } = require('../utils/secrets')
@@ -14,7 +14,7 @@ const dropDB = `DROP DATABASE IF EXISTS ${DB_NAME}`;
 
 const createTableUSers = `
 CREATE TABLE IF NOT EXISTS users (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     firstname VARCHAR(50) NULL,
     lastname VARCHAR(50) NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -25,11 +25,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 const createNewUser = `
 INSERT INTO users (firstname, lastname, email, password, created_on)
-VALUES (?, ?, ?, ?, NOW())
+VALUES ($1, $2, $3, $4, NOW()) RETURNING *
 `;
 
 const findUserByEmail = `
-SELECT * FROM users WHERE email = ?
+SELECT * FROM users WHERE email = $1
 `;
 
 module.exports = {

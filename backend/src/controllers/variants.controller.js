@@ -38,13 +38,13 @@ exports.getProductVariants = async (req, res) => {
     // ===== DATABASE QUERY WITH ERROR HANDLING =====
     let variants = [];
     try {
-      const [queryResults] = await db.query(
+      const result = await db.query(
         `SELECT * FROM product_variants 
-         WHERE product_id = ? AND is_active = 1 
+         WHERE product_id = $1 AND is_active = true 
          ORDER BY variant_value ASC`,
         [productIdNum]
       );
-      variants = queryResults || [];
+      variants = result.rows || [];
     } catch (dbError) {
       console.error(`❌ Database error fetching variants for product ${productIdNum}:`, {
         message: dbError.message,
@@ -75,16 +75,16 @@ exports.getProductVariants = async (req, res) => {
     const variantsWithImages = await Promise.all(
       variants.map(async (variant) => {
         try {
-          const [images] = await db.query(
+          const imgResult = await db.query(
             `SELECT id, image_url, alt_text, image_order, is_thumbnail 
              FROM variant_images 
-             WHERE variant_id = ? 
+             WHERE variant_id = $1 
              ORDER BY image_order ASC`,
             [variant.id]
           );
           return {
             ...variant,
-            images: images && images.length > 0 ? images : [],
+            images: imgResult.rows && imgResult.rows.length > 0 ? imgResult.rows : [],
           };
         } catch (imgError) {
           console.warn(`⚠️ Could not fetch images for variant ${variant.id}: ${imgError.message}`);
@@ -130,23 +130,23 @@ exports.getVariant = async (req, res) => {
   try {
     const { variantId } = req.params;
 
-    const [variants] = await db.query(
-      'SELECT * FROM product_variants WHERE id = ?',
+    const result = await db.query(
+      'SELECT * FROM product_variants WHERE id = $1',
       [variantId]
     );
 
-    if (variants.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found',
       });
     }
 
-    const variant = variants[0];
+    const variant = result.rows[0];
 
     // Get images
-    const [images] = await db.query(
-      'SELECT * FROM variant_images WHERE variant_id = ? ORDER BY image_order ASC',
+    const imgResult = await db.query(
+      'SELECT * FROM variant_images WHERE variant_id = $1 ORDER BY image_order ASC',
       [variantId]
     );
 
@@ -154,7 +154,7 @@ exports.getVariant = async (req, res) => {
       status: 'success',
       data: {
         ...variant,
-        images: images || [],
+        images: imgResult.rows || [],
       },
     });
   } catch (error) {
@@ -183,8 +183,8 @@ exports.createVariant = async (req, res) => {
     }
 
     // Check if product exists
-    const [products] = await db.query('SELECT id FROM products WHERE id = ?', [productId]);
-    if (products.length === 0) {
+    const prodResult = await db.query('SELECT id FROM products WHERE id = $1', [productId]);
+    if (prodResult.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Product not found',
@@ -193,9 +193,9 @@ exports.createVariant = async (req, res) => {
 
     // Create variant
     const variantName = variant_name || `${variant_value}${variant_unit}`;
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO product_variants (product_id, variant_name, variant_value, variant_unit, price, stock, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+       VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *`,
       [productId, variantName, variant_value, variant_unit, price, stock || 0]
     );
 
@@ -203,7 +203,7 @@ exports.createVariant = async (req, res) => {
       status: 'success',
       message: 'Variant created successfully',
       data: {
-        id: result.insertId,
+        id: result.rows[0].id,
         product_id: productId,
         variant_name: variantName,
         variant_value,
@@ -231,15 +231,15 @@ exports.updateVariant = async (req, res) => {
     const { price, stock, is_active } = req.body;
 
     // Check if variant exists
-    const [variants] = await db.query('SELECT * FROM product_variants WHERE id = ?', [variantId]);
-    if (variants.length === 0) {
+    const varResult = await db.query('SELECT * FROM product_variants WHERE id = $1', [variantId]);
+    if (varResult.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found',
       });
     }
 
-    const variant = variants[0];
+    const variant = varResult.rows[0];
     const updatePrice = price !== undefined ? price : variant.price;
     const updateStock = stock !== undefined ? stock : variant.stock;
     const updateActive = is_active !== undefined ? is_active : variant.is_active;
@@ -247,8 +247,8 @@ exports.updateVariant = async (req, res) => {
     // Update variant
     await db.query(
       `UPDATE product_variants 
-       SET price = ?, stock = ?, is_active = ?, updated_at = NOW()
-       WHERE id = ?`,
+       SET price = $1, stock = $2, is_active = $3, updated_at = NOW()
+       WHERE id = $4`,
       [updatePrice, updateStock, updateActive, variantId]
     );
 
@@ -280,8 +280,8 @@ exports.deleteVariant = async (req, res) => {
     const { variantId } = req.params;
 
     // Check if variant exists
-    const [variants] = await db.query('SELECT id FROM product_variants WHERE id = ?', [variantId]);
-    if (variants.length === 0) {
+    const result = await db.query('SELECT id FROM product_variants WHERE id = $1', [variantId]);
+    if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found',
@@ -289,7 +289,7 @@ exports.deleteVariant = async (req, res) => {
     }
 
     // Delete variant (cascade deletes variant_images)
-    await db.query('DELETE FROM product_variants WHERE id = ?', [variantId]);
+    await db.query('DELETE FROM product_variants WHERE id = $1', [variantId]);
 
     res.status(200).json({
       status: 'success',
@@ -314,8 +314,8 @@ exports.uploadVariantImages = async (req, res) => {
     const { images } = req.body;
 
     // Check if variant exists
-    const [variants] = await db.query('SELECT id FROM product_variants WHERE id = ?', [variantId]);
-    if (variants.length === 0) {
+    const varResult = await db.query('SELECT id FROM product_variants WHERE id = $1', [variantId]);
+    if (varResult.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found',
@@ -333,13 +333,13 @@ exports.uploadVariantImages = async (req, res) => {
     const insertedImages = [];
     for (let i = 0; i < images.length; i++) {
       const { image_url, alt_text } = images[i];
-      const [result] = await db.query(
+      const result = await db.query(
         `INSERT INTO variant_images (variant_id, image_url, alt_text, image_order, is_thumbnail)
-         VALUES (?, ?, ?, ?, ?)`,
-        [variantId, image_url, alt_text || 'Variant image', i + 1, i === 0 ? 1 : 0]
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [variantId, image_url, alt_text || 'Variant image', i + 1, i === 0 ? true : false]
       );
       insertedImages.push({
-        id: result.insertId,
+        id: result.rows[0].id,
         image_url,
         alt_text,
         image_order: i + 1,
@@ -369,15 +369,15 @@ exports.deleteVariantImage = async (req, res) => {
   try {
     const { imageId } = req.params;
 
-    const [images] = await db.query('SELECT variant_id FROM variant_images WHERE id = ?', [imageId]);
-    if (images.length === 0) {
+    const result = await db.query('SELECT variant_id FROM variant_images WHERE id = $1', [imageId]);
+    if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Image not found',
       });
     }
 
-    await db.query('DELETE FROM variant_images WHERE id = ?', [imageId]);
+    await db.query('DELETE FROM variant_images WHERE id = $1', [imageId]);
 
     res.status(200).json({
       status: 'success',

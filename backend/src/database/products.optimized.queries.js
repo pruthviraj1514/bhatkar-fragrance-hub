@@ -1,19 +1,16 @@
 /**
- * PRODUCTION-OPTIMIZED PRODUCT QUERIES
+ * PRODUCTION-OPTIMIZED PRODUCT QUERIES (PostgreSQL)
  * =====================================
  * 
  * Single aggregate queries - No N+1 problems
  * Response time target: < 200ms
  * 
- * File: backend/src/database/products.optimized.queries.js
+ * Converted to Pg: Uses $1 placeholders and json_agg/json_build_object.
  */
 
 // ========================================================================
 // 1. GET ALL PRODUCTS WITH IMAGES (Main listing query)
 // ========================================================================
-// Performance: Single query with LEFT JOIN
-// Time: ~50-100ms for 10K products (with pagination)
-// Indexes used: idx_is_active, idx_is_active_created_on_desc
 
 const getAllProductsOptimized = `
 SELECT 
@@ -35,21 +32,24 @@ SELECT
   p.avg_rating,
   p.total_reviews,
   p.views_count,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'id', pi.id,
-      'url', pi.image_url,
-      'alt', pi.alt_text,
-      'order', pi.image_order,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC
+  COALESCE(
+    json_agg(
+      json_build_object(
+        'id', pi.id,
+        'url', pi.image_url,
+        'alt', pi.alt_text,
+        'order', pi.image_order,
+        'thumb', pi.is_thumbnail
+      ) ORDER BY pi.image_order ASC
+    ) FILTER (WHERE pi.id IS NOT NULL),
+    '[]'::json
   ) as images
 FROM products p
 LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.image_order <= 4
-WHERE p.is_active = 1
+WHERE p.is_active = true
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $1 OFFSET $2
 `;
 
 // ========================================================================
@@ -68,18 +68,22 @@ SELECT
   p.is_best_seller,
   p.avg_rating,
   p.total_reviews,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1 AND p.is_best_seller = 1
+WHERE p.is_active = true AND p.is_best_seller = true
 GROUP BY p.id
 ORDER BY p.views_count DESC
-LIMIT ?
+LIMIT $1
 `;
 
 // ========================================================================
@@ -109,18 +113,21 @@ SELECT
   p.avg_rating,
   p.total_reviews,
   p.views_count,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'id', pi.id,
-      'url', pi.image_url,
-      'alt', pi.alt_text,
-      'order', pi.image_order,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC
+  COALESCE(
+    json_agg(
+      json_build_object(
+        'id', pi.id,
+        'url', pi.image_url,
+        'alt', pi.alt_text,
+        'order', pi.image_order,
+        'thumb', pi.is_thumbnail
+      ) ORDER BY pi.image_order ASC
+    ) FILTER (WHERE pi.id IS NOT NULL),
+    '[]'::json
   ) as images
 FROM products p
 LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.id = ? AND p.is_active = 1
+WHERE p.id = $1 AND p.is_active = true
 GROUP BY p.id
 `;
 
@@ -141,23 +148,27 @@ SELECT
   p.is_best_seller,
   p.avg_rating,
   p.total_reviews,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1
+WHERE p.is_active = true
   AND (
-    p.name LIKE ? 
-    OR p.brand LIKE ?
-    OR p.category = ?
+    p.name ILIKE $1 
+    OR p.brand ILIKE $2
+    OR p.category = $3
   )
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $4 OFFSET $5
 `;
 
 // ========================================================================
@@ -177,18 +188,22 @@ SELECT
   p.is_best_seller,
   p.avg_rating,
   p.total_reviews,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1 AND p.category = ?
+WHERE p.is_active = true AND p.category = $1
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $2 OFFSET $3
 `;
 
 // ========================================================================
@@ -197,9 +212,8 @@ LIMIT ? OFFSET ?
 
 const incrementViewsCount = `
 UPDATE products 
-SET views_count = views_count + 1, 
-    last_viewed_at = NOW()
-WHERE id = ?
+SET views_count = views_count + 1
+WHERE id = $1
 `;
 
 // ========================================================================
@@ -216,18 +230,22 @@ SELECT
   p.discount_percentage,
   p.avg_rating,
   p.total_reviews,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1 AND p.avg_rating >= 4.0
+WHERE p.is_active = true AND p.avg_rating >= 4.0
 GROUP BY p.id
 ORDER BY p.avg_rating DESC, p.total_reviews DESC
-LIMIT ?
+LIMIT $1
 `;
 
 // ========================================================================
@@ -251,18 +269,22 @@ SELECT
   p.category,
   p.is_best_seller,
   p.avg_rating,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1
+WHERE p.is_active = true
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $1 OFFSET $2
 `;
 
 // ========================================================================
@@ -270,11 +292,11 @@ LIMIT ? OFFSET ?
 // ========================================================================
 
 const countActiveProducts = `
-SELECT COUNT(*) as total FROM products WHERE is_active = 1
+SELECT COUNT(*) as total FROM products WHERE is_active = true
 `;
 
 const countProductsByCategory = `
-SELECT COUNT(*) as total FROM products WHERE is_active = 1 AND category = ?
+SELECT COUNT(*) as total FROM products WHERE is_active = true AND category = $1
 `;
 
 // ========================================================================
@@ -295,12 +317,11 @@ SELECT
   p.created_on,
   p.views_count,
   p.total_reviews,
-  COUNT(pi.id) as image_count
+  (SELECT COUNT(*) FROM product_images pi WHERE pi.product_id = p.id) as image_count
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $1 OFFSET $2
 `;
 
 // ========================================================================
@@ -315,8 +336,8 @@ SET p.avg_rating = (
 p.total_reviews = (
   SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = 1
 ),
-p.updated_at = NOW()
-WHERE p.id = ?
+p.updated_on = NOW()
+WHERE p.id = $1
 `;
 
 // ========================================================================
@@ -345,18 +366,22 @@ SELECT
   p.is_best_seller,
   p.avg_rating,
   p.total_reviews,
-  JSON_ARRAYAGG(
-    JSON_OBJECT(
-      'url', pi.image_url,
-      'thumb', pi.is_thumbnail
-    ) ORDER BY pi.image_order ASC LIMIT 1
+  COALESCE(
+    (
+      SELECT json_agg(
+        json_build_object(
+          'url', pi2.image_url,
+          'thumb', pi2.is_thumbnail
+        ) ORDER BY pi2.image_order ASC
+      ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
+    ),
+    '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
-WHERE p.is_active = 1
+WHERE p.is_active = true
 GROUP BY p.id
 ORDER BY p.created_on DESC
-LIMIT ? OFFSET ?
+LIMIT $1 OFFSET $2
 `;
 
 // ========================================================================

@@ -18,29 +18,29 @@ exports.getVariantImages = async (req, res) => {
   const sql = `
     SELECT id, variant_id, image_url, alt_text, image_order, is_thumbnail
     FROM variant_images
-    WHERE variant_id = ? AND is_active = 1
+    WHERE variant_id = $1 AND is_active = true
     ORDER BY image_order ASC
   `;
 
   try {
-    const [results] = await db.query(sql, [variantId]);
+    const result = await db.query(sql, [variantId]);
 
     // If no variant-specific images, fetch product images as fallback
-    if (!results || results.length === 0) {
+    if (!result.rows || result.rows.length === 0) {
       const fallbackSql = `
         SELECT pi.id, pi.image_url, pi.alt_text, pi.image_order, pi.is_thumbnail
         FROM product_variants pv
         JOIN product_images pi ON pv.product_id = pi.product_id
-        WHERE pv.id = ? AND pi.is_active = 1
+        WHERE pv.id = $1 AND pi.is_active = true
         ORDER BY pi.image_order ASC
       `;
 
       try {
-        const [fallbackResults] = await db.query(fallbackSql, [variantId]);
+        const fallbackResults = await db.query(fallbackSql, [variantId]);
         return res.status(200).json({
           status: 'success',
-          data: fallbackResults || [],
-          total: (fallbackResults || []).length,
+          data: fallbackResults.rows || [],
+          total: (fallbackResults.rows || []).length,
           isFallback: true
         });
       } catch (fallbackErr) {
@@ -55,8 +55,8 @@ exports.getVariantImages = async (req, res) => {
     } else {
       return res.status(200).json({
         status: 'success',
-        data: results,
-        total: results.length,
+        data: result.rows,
+        total: result.rows.length,
         isFallback: false
       });
     }
@@ -86,8 +86,8 @@ exports.addVariantImages = async (req, res) => {
 
   try {
     // Check variant exists
-    const [checkResults] = await db.query('SELECT id FROM product_variants WHERE id = ?', [variantId]);
-    if (!checkResults || checkResults.length === 0) {
+    const checkResults = await db.query('SELECT id FROM product_variants WHERE id = $1', [variantId]);
+    if (checkResults.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found'
@@ -98,13 +98,13 @@ exports.addVariantImages = async (req, res) => {
     const results = [];
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      const [insertResult] = await db.query(
+      const insertResult = await db.query(
         `INSERT INTO variant_images (variant_id, image_url, alt_text, image_order, is_thumbnail, is_active)
-             VALUES (?, ?, ?, ?, ?, 1)`,
+             VALUES ($1, $2, $3, $4, $5, true) RETURNING *`,
         [variantId, img.image_url, img.alt_text || '', i + 1, i === 0]
       );
       results.push({
-        id: insertResult.insertId,
+        id: insertResult.rows[0].id,
         variant_id: variantId,
         image_url: img.image_url,
         alt_text: img.alt_text || '',
@@ -143,7 +143,7 @@ exports.deleteVariantImage = async (req, res) => {
   }
 
   try {
-    await db.query('DELETE FROM variant_images WHERE id = ?', [imageId]);
+    await db.query('DELETE FROM variant_images WHERE id = $1', [imageId]);
     return res.status(200).json({
       status: 'success',
       message: 'Image deleted successfully'

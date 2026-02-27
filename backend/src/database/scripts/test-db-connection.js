@@ -1,7 +1,6 @@
 const dotenv = require('dotenv');
 dotenv.config({ path: process.cwd() + '/backend/.env' });
-const mysql = require('mysql2/promise');
-
+const db = require('../../../src/config/db');
 (async () => {
   const cfg = {
     host: process.env.DB_HOST,
@@ -20,11 +19,8 @@ const mysql = require('mysql2/promise');
   });
 
   try {
-    const conn = await mysql.createConnection(cfg);
-    console.log('Connected — executing test query SELECT 1');
-    const [rows] = await conn.execute('SELECT 1 as ok');
-    console.log('Query result:', rows);
-    await conn.end();
+    const res = await db.query('SELECT 1 as ok');
+    console.log('Query result:', res);
     console.log('Connection test succeeded');
     process.exit(0);
   } catch (err) {
