@@ -1,4 +1,4 @@
-const db = require('../config/db');  // Consolidated MySQL Pool
+const db = require('../config/db');  // Consolidated PostgreSQL/Supabase Pool
 const { createNewUser: createNewUserQuery, findUserByEmail: findUserByEmailQuery } = require('../database/queries');
 const { logger } = require('../utils/logger');
 
@@ -12,7 +12,6 @@ class User {
 
     static async create(newUser) {
         try {
-            // MySQL: result.insertId instead of result.rows[0].id
             const [result] = await db.query(createNewUserQuery,
                 [
                     newUser.firstname,
@@ -21,7 +20,7 @@ class User {
                     newUser.password
                 ]);
             return {
-                id: result.insertId,
+                id: result.id,
                 firstname: newUser.firstname,
                 lastname: newUser.lastname,
                 email: newUser.email
@@ -34,7 +33,7 @@ class User {
 
     static async findByEmail(email) {
         try {
-            // MySQL: [rows] instead of result.rows
+            // PostgreSQL: Use [rows] destructuring with unified db.query
             const [rows] = await db.query(findUserByEmailQuery, [email]);
             if (rows.length) {
                 return rows[0];

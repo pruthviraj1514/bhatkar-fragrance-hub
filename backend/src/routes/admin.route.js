@@ -27,51 +27,26 @@ router.post('/logout', adminAuth, adminController.logout);
  */
 
 // Create Product - POST /api/admin/products
-router.post('/products', adminAuth, (req, res) => {
-    // TODO: Implement product creation
-    res.status(200).send({
-        status: 'success',
-        message: 'Product creation endpoint (not yet implemented)'
-    });
-});
+router.post('/products', adminAuth, adminController.createProduct);
 
 // Get All Products - GET /api/admin/products
-router.get('/products', adminAuth, (req, res) => {
-    // TODO: Implement get all products
-    res.status(200).send({
-        status: 'success',
-        message: 'Get all products endpoint (not yet implemented)',
-        data: []
-    });
-});
+router.get('/products', adminAuth, adminController.getAllProducts);
 
 // Get Product by ID - GET /api/admin/products/:id
-router.get('/products/:id', adminAuth, (req, res) => {
-    // TODO: Implement get product by ID
-    res.status(200).send({
-        status: 'success',
-        message: 'Get product by ID endpoint (not yet implemented)',
-        data: {}
-    });
-});
+router.get('/products/:id', adminAuth, adminController.getProductById);
 
 // Update Product - PUT /api/admin/products/:id
-router.put('/products/:id', adminAuth, (req, res) => {
-    // TODO: Implement product update
-    res.status(200).send({
-        status: 'success',
-        message: 'Product update endpoint (not yet implemented)'
-    });
-});
+router.put('/products/:id', adminAuth, adminController.updateProduct);
 
 // Delete Product - DELETE /api/admin/products/:id
-router.delete('/products/:id', adminAuth, (req, res) => {
-    // TODO: Implement product deletion
-    res.status(200).send({
-        status: 'success',
-        message: 'Product deletion endpoint (not yet implemented)'
-    });
-});
+router.delete('/products/:id', adminAuth, adminController.deleteProduct);
+
+/**
+ * Price & Photos Management 
+ * Note: These are mapped to Variants and ProductImages in the current architecture.
+ * Reusing existing endpoints is recommended.
+ */
+// ... (Keeping existing placeholders or wiring to corresponding controllers)
 
 /**
  * Price Management (CRUD)

@@ -330,13 +330,13 @@ LIMIT $1 OFFSET $2
 
 const updateProductRatingStats = `
 UPDATE products p
-SET p.avg_rating = (
-  SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = 1
+SET avg_rating = (
+  SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = true
 ),
-p.total_reviews = (
-  SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = 1
+total_reviews = (
+  SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = true
 ),
-p.updated_on = NOW()
+updated_on = NOW()
 WHERE p.id = $1
 `;
 

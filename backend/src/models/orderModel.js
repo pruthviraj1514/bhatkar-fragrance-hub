@@ -17,12 +17,13 @@ class OrderModel {
 
       const [result] = await db.execute(
         `INSERT INTO orders (user_id, product_id, quantity, total_amount, razorpay_order_id, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
         [userId, productId, quantity, totalAmount, razorpayOrderId, 'PENDING']
       );
 
-      logger.info(`✅ Order created: ${result.insertId}`);
-      return result.insertId;
+      const id = result.id || result.insertId;
+      logger.info(`✅ Order created: ${id}`);
+      return id;
     } catch (error) {
       logger.error('❌ Error creating order:', error.message);
       throw error;
@@ -35,7 +36,7 @@ class OrderModel {
   static async getById(orderId) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM orders WHERE id = ?',
+        'SELECT * FROM orders WHERE id = $1',
         [orderId]
       );
 
@@ -52,7 +53,7 @@ class OrderModel {
   static async getByRazorpayOrderId(razorpayOrderId) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM orders WHERE razorpay_order_id = ?',
+        'SELECT * FROM orders WHERE razorpay_order_id = $1',
         [razorpayOrderId]
       );
 
@@ -69,7 +70,7 @@ class OrderModel {
   static async getByUserId(userId, limit = 50, offset = 0) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
         [userId, limit, offset]
       );
 
@@ -86,7 +87,7 @@ class OrderModel {
   static async updateStatus(orderId, status) {
     try {
       const [result] = await db.execute(
-        'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2',
         [status, orderId]
       );
 

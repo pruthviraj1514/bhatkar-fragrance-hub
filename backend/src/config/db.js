@@ -27,7 +27,7 @@ const poolConfig = {
     max: 10,  // Max connections restricted to 10 for Supabase connection pooler
     idleTimeoutMillis: 30000,  // Close idle clients after 30 seconds
     connectionTimeoutMillis: 5000,  // Prevent requests from hanging - fail fast!
-    query_timeout: 10000, // Drop queries that take more than 10s
+    query_timeout: 20000, // Relaxed to 20s for complex product joins
     // SSL Configuration for Supabase
     ssl: {
         rejectUnauthorized: false

@@ -1,4 +1,4 @@
-const db = require('../config/db');  // Consolidated MySQL Pool
+const db = require('../config/db');  // Consolidated PostgreSQL/Supabase Pool
 const {
     createProduct: createProductQuery,
     getAllProducts: getAllProductsQuery,
@@ -19,7 +19,7 @@ const convertProduct = (product) => ({
 });
 
 class Product {
-    constructor(name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller = false, is_luxury_product = false, is_active = 0, original_price = null, discount_percentage = 0, shipping_cost = 0, other_charges = 0) {
+    constructor(name, brand, price, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller = false, is_luxury_product = false, is_active = false, original_price = null, discount_percentage = 0, shipping_cost = 0, other_charges = 0) {
         this.name = name;
         this.brand = brand;
         this.price = price;
@@ -40,7 +40,7 @@ class Product {
 
     static async create(newProduct) {
         try {
-            // MySQL: result.insertId instead of result.rows[0].id
+            // Create product entry in PostgreSQL
             const [result] = await db.query(createProductQuery,
                 [
                     newProduct.name,
@@ -56,13 +56,13 @@ class Product {
                     newProduct.concentration,
                     newProduct.description,
                     newProduct.stock,
-                    newProduct.is_best_seller || false,
-                    newProduct.is_luxury_product || false,
-                    newProduct.is_active !== undefined ? newProduct.is_active : 0
+                    !!newProduct.is_best_seller,
+                    !!newProduct.is_luxury_product,
+                    newProduct.is_active !== undefined ? !!newProduct.is_active : false
                 ]);
 
             return {
-                id: result.insertId,
+                id: result.id,
                 ...newProduct,
                 price: parseFloat(newProduct.price)
             };
@@ -74,7 +74,7 @@ class Product {
 
     static async getAll() {
         try {
-            // MySQL: [rows] instead of result.rows
+            // Fetch all products
             const [rows] = await db.query(getAllProductsQuery);
             return rows.map(convertProduct);
         } catch (error) {
@@ -85,7 +85,7 @@ class Product {
 
     static async getById(id) {
         try {
-            // MySQL: [rows] instead of result.rows
+            // Fetch product by ID
             const [rows] = await db.query(getProductByIdQuery, [id]);
             if (rows.length) {
                 return convertProduct(rows[0]);
@@ -99,7 +99,7 @@ class Product {
 
     static async update(id, updatedProduct) {
         try {
-            // MySQL: result.affectedRows instead of result.rowCount
+            // Update product in PostgreSQL
             const [result] = await db.query(updateProductQuery,
                 [
                     updatedProduct.name,
@@ -115,9 +115,9 @@ class Product {
                     updatedProduct.concentration,
                     updatedProduct.description,
                     updatedProduct.stock,
-                    updatedProduct.is_best_seller || false,
-                    updatedProduct.is_luxury_product || false,
-                    updatedProduct.is_active !== undefined ? updatedProduct.is_active : 0,
+                    !!updatedProduct.is_best_seller,
+                    !!updatedProduct.is_luxury_product,
+                    updatedProduct.is_active !== undefined ? !!updatedProduct.is_active : false,
                     id
                 ]);
 
@@ -137,7 +137,7 @@ class Product {
 
     static async delete(id) {
         try {
-            // MySQL: result.affectedRows instead of result.rowCount
+            // Delete product in PostgreSQL
             const [result] = await db.query(deleteProductQuery, [id]);
             if (result.affectedRows === 0) {
                 throw { kind: "not_found" };

@@ -1,4 +1,4 @@
-const db = require('../config/db');  // Consolidated MySQL Pool
+const db = require('../config/db');  // Consolidated PostgreSQL/Supabase Pool
 const {
   createProductImage: createProductImageQuery,
   getProductImages: getProductImagesQuery,
@@ -36,11 +36,16 @@ class ProductImage {
     return ProductImage.extractImageFormat(url);
   }
 
-  // Add a single image to a product
+  /**
+   * Add a single image to a product
+   * PostgreSQL/Supabase compatible
+   */
   static async addImage(newImage) {
     try {
       const imageFormat = newImage.imageFormat || ProductImage.extractImageFormat(newImage.imageUrl);
-      // MySQL: result.insertId instead of result.rows[0].id
+
+      // db.query wrapper returns [resultObj, fields] for INSERTS
+      // resultObj contains the inserted row (due to RETURNING *) and resultObj.insertId
       const [result] = await db.query(createProductImageQuery, [
         newImage.productId,
         newImage.imageUrl,
@@ -50,41 +55,51 @@ class ProductImage {
         newImage.isThumbnail
       ]);
 
+      if (!result) {
+        throw new Error('Failed to insert product image - no result returned');
+      }
+
       return {
-        id: result.insertId,
+        id: result.id || result.insertId,
         ...newImage,
-        imageFormat
+        imageFormat,
+        created_on: result.created_on
       };
     } catch (error) {
-      logger.error(`Add image error: ${error.message}`);
+      logger.error(`[PostgreSQL] Add image error: ${error.message}`);
       throw error;
     }
   }
 
-  // Get all images for a product
+  /**
+   * Get all images for a product
+   */
   static async getProductImages(productId) {
     try {
-      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getProductImagesQuery, [productId]);
       return rows;
     } catch (error) {
-      logger.error(`Get product images error: ${error.message}`);
+      logger.error(`[PostgreSQL] Get product images error: ${error.message}`);
       throw error;
     }
   }
 
-  // Get product with all its images (includes product details)
+  /**
+   * Get product with all its images (includes product details)
+   * Detailed product info + aggregated images array
+   */
   static async getProductWithImages(productId) {
     try {
-      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getProductWithImagesQuery, [productId]);
-      if (rows.length === 0) {
+      if (!rows || rows.length === 0) {
         throw { kind: 'not_found' };
       }
 
       const product = rows[0];
-      // MySQL JSON_ARRAYAGG returns an array
-      if (!Array.isArray(product.images) && typeof product.images === 'string') {
+
+      // PostgreSQL json_agg returns an array automatically with pg driver
+      // If it somehow comes back as a string, parse it
+      if (typeof product.images === 'string') {
         try {
           product.images = JSON.parse(product.images);
         } catch (e) {
@@ -99,13 +114,15 @@ class ProductImage {
         product.images = [];
       }
 
-      // Convert price to number
+      // Ensure consistent data types
       product.price = parseFloat(product.price);
 
       return product;
     } catch (error) {
-      logger.warn(`Aggregate query failed for getProductWithImages: ${error.message}. Falling back to separate queries.`);
-      // Fallback: fetch product and images separately
+      // Kind of a broad fallback but keeping for robustness
+      if (error.kind === 'not_found') throw error;
+
+      logger.warn(`Aggregate query for getProductWithImages failed (PID ${productId}): ${error.message}. Using fallback.`);
       try {
         const productDetails = await Product.getById(productId);
         let images = await ProductImage.getProductImages(productId);
@@ -113,19 +130,20 @@ class ProductImage {
         productDetails.images = images.filter(img => img && img.image_url !== null);
         return productDetails;
       } catch (fallbackError) {
-        logger.error(`Fallback getProductWithImages error: ${fallbackError.message}`);
+        logger.error(`Fallback getProductWithImages failure: ${fallbackError.message}`);
         throw fallbackError;
       }
     }
   }
 
-  // Get all products with their images
+  /**
+   * Get all products with their images (Aggregated)
+   */
   static async getAllProductsWithImages() {
     try {
-      // MySQL: [rows] instead of result.rows
       const [rows] = await db.query(getAllProductsWithImagesQuery);
 
-      const products = rows.map(product => {
+      return rows.map(product => {
         let images = product.images;
         if (typeof images === 'string') {
           try {
@@ -147,11 +165,8 @@ class ProductImage {
           images: images
         };
       });
-
-      return products;
     } catch (error) {
-      logger.warn(`Aggregate query failed for getAllProductsWithImages: ${error.message}. Falling back to separate queries.`);
-      // Fallback: query products and then fetch images per product
+      logger.warn(`Aggregate query for getAllProductsWithImages failed: ${error.message}. Using fallback.`);
       try {
         const products = await Product.getAll();
         const results = [];
@@ -162,17 +177,19 @@ class ProductImage {
         }
         return results;
       } catch (fallbackError) {
-        logger.error(`Fallback getAllProductsWithImages error: ${fallbackError.message}`);
+        logger.error(`Fallback getAllProductsWithImages failure: ${fallbackError.message}`);
         throw fallbackError;
       }
     }
   }
 
-  // Update a single image
+  /**
+   * Update a single image
+   */
   static async updateImage(imageId, productId, updates) {
     try {
       const imageFormat = updates.imageFormat || ProductImage.extractImageFormat(updates.imageUrl);
-      // MySQL: result.affectedRows instead of result.rowCount
+
       const [result] = await db.query(updateProductImageQuery, [
         updates.imageUrl,
         imageFormat,
@@ -188,15 +205,16 @@ class ProductImage {
 
       return { id: imageId, productId, ...updates };
     } catch (error) {
-      logger.error(`Update image error: ${error.message}`);
+      logger.error(`[PostgreSQL] Update image error: ${error.message}`);
       throw error;
     }
   }
 
-  // Delete a single image
+  /**
+   * Delete a single image
+   */
   static async deleteImage(imageId, productId) {
     try {
-      // MySQL: result.affectedRows instead of result.rowCount
       const [result] = await db.query(deleteProductImageQuery, [imageId, productId]);
 
       if (result.affectedRows === 0) {
@@ -205,19 +223,20 @@ class ProductImage {
 
       return { message: 'Image deleted successfully' };
     } catch (error) {
-      logger.error(`Delete image error: ${error.message}`);
+      logger.error(`[PostgreSQL] Delete image error: ${error.message}`);
       throw error;
     }
   }
 
-  // Delete all images for a product
+  /**
+   * Delete all images for a product
+   */
   static async deleteProductImages(productId) {
     try {
-      // MySQL: result.affectedRows instead of result.rowCount
       const [result] = await db.query(deleteProductImagesQuery, [productId]);
       return { message: `${result.affectedRows} images deleted successfully` };
     } catch (error) {
-      logger.error(`Delete product images error: ${error.message}`);
+      logger.error(`[PostgreSQL] Delete product images error: ${error.message}`);
       throw error;
     }
   }

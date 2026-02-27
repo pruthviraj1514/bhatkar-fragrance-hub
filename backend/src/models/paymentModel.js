@@ -17,12 +17,13 @@ class PaymentModel {
 
       const [result] = await db.execute(
         `INSERT INTO payments (order_id, razorpay_payment_id, razorpay_signature, payment_status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *`,
         [orderId, razorpayPaymentId, razorpaySignature, status]
       );
 
-      logger.info(`✅ Payment record created: ${result.insertId}`);
-      return result.insertId;
+      const id = result.id || result.insertId;
+      logger.info(`✅ Payment record created: ${id}`);
+      return id;
     } catch (error) {
       logger.error('❌ Error creating payment record:', error.message);
       throw error;
@@ -35,7 +36,7 @@ class PaymentModel {
   static async getById(paymentId) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM payments WHERE id = ?',
+        'SELECT * FROM payments WHERE id = $1',
         [paymentId]
       );
 
@@ -52,7 +53,7 @@ class PaymentModel {
   static async getByRazorpayPaymentId(razorpayPaymentId) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM payments WHERE razorpay_payment_id = ?',
+        'SELECT * FROM payments WHERE razorpay_payment_id = $1',
         [razorpayPaymentId]
       );
 
@@ -69,7 +70,7 @@ class PaymentModel {
   static async getByOrderId(orderId) {
     try {
       const [rows] = await db.execute(
-        'SELECT * FROM payments WHERE order_id = ? ORDER BY created_at DESC',
+        'SELECT * FROM payments WHERE order_id = $1 ORDER BY created_at DESC',
         [orderId]
       );
 
@@ -86,7 +87,7 @@ class PaymentModel {
   static async updateStatus(paymentId, status) {
     try {
       const [result] = await db.execute(
-        'UPDATE payments SET payment_status = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE payments SET payment_status = $1, updated_at = NOW() WHERE id = $2',
         [status, paymentId]
       );
 
@@ -104,7 +105,7 @@ class PaymentModel {
   static async exists(razorpayPaymentId) {
     try {
       const [rows] = await db.execute(
-        'SELECT id FROM payments WHERE razorpay_payment_id = ?',
+        'SELECT id FROM payments WHERE razorpay_payment_id = $1',
         [razorpayPaymentId]
       );
 

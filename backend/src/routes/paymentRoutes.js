@@ -44,16 +44,16 @@ router.get('/health', async (req, res) => {
     const db = require('../config/db');
 
     const [ordersRow] = await db.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'updated_at'`
+      `SELECT COUNT(*) AS cnt FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'updated_at'`
     );
     const [paymentsRow] = await db.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'created_at'`
+      `SELECT COUNT(*) AS cnt FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'payments' AND column_name = 'created_at'`
     );
 
-    const ordersUpdatedAt = !!(ordersRow && ordersRow[0] && ordersRow[0].cnt > 0);
-    const paymentsCreatedAt = !!(paymentsRow && paymentsRow[0] && paymentsRow[0].cnt > 0);
+    const ordersUpdatedAt = !!(ordersRow && ordersRow.length > 0 && parseInt(ordersRow[0].cnt) > 0);
+    const paymentsCreatedAt = !!(paymentsRow && paymentsRow.length > 0 && parseInt(paymentsRow[0].cnt) > 0);
 
     res.status(200).json({
       status: 'Payment API is running',

@@ -1,35 +1,48 @@
 const app = require('./app');
 const { logger } = require('./utils/logger');
-const db = require('./config/db');  // Consolidated MySQL Pool
+const db = require('./config/db');
+const { runStartupMigrations } = require('./database/startupMigrations');
 
 const PORT = process.env.PORT || 5000;
 
-// Basic sanity check can be added here if needed
+/**
+ * SERVER STARTUP
+ */
+async function startServer() {
+    try {
+        // Verify database connection
+        await db.verifyConnection();
 
-const server = app.listen(PORT, '0.0.0.0', async () => {
-    logger.info(`Running on PORT ${PORT}`);
+        // Run startup migrations (add columns, indexes, etc.)
+        await runStartupMigrations(db, logger);
 
-    logger.info('✓ PostgreSQL/Supabase connection pool is ready to use');
-});
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            logger.info('============================================================');
+            logger.info(`🚀 SERVER STARTED ON PORT ${PORT}`);
+            logger.info(`⏱️  Uptime: ${process.uptime()}s`);
+            logger.info('============================================================');
+        });
 
-// Handle server errors (e.g., port already in use)
-server.on('error', (err) => {
-    if (err && err.code === 'EADDRINUSE') {
-        logger.error(`❌ Port ${PORT} is already in use. Another process is listening on this port.`);
-        logger.error('Tip: run `Get-NetTCPConnection -LocalPort 3000` on PowerShell to find the process, then stop it.');
-        // Exit gracefully with non-zero code so supervisors know it failed
+        // Handle server errors
+        server.on('error', (err) => {
+            if (err && err.code === 'EADDRINUSE') {
+                logger.error(`❌ Port ${PORT} is already in use.`);
+                process.exit(1);
+            }
+            logger.error('Server encountered an unexpected error:', err.message);
+            process.exit(1);
+        });
+
+        return server;
+    } catch (error) {
+        logger.error('❌ Failed to start server:', error.message);
         process.exit(1);
     }
-    logger.error('Server encountered an unexpected error:', err && err.message ? err.message : err);
-    process.exit(1);
-});
+}
 
-// Catch unhandled rejections & uncaught exceptions to avoid crashing without logs
-process.on('unhandledRejection', (reason) => {
-    logger.error('Unhandled Promise Rejection:', reason && reason.stack ? reason.stack : reason);
-});
+// Start the server
+if (require.main === module) {
+    startServer();
+}
 
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err && err.stack ? err.stack : err);
-    process.exit(1);
-});
+module.exports = { startServer };

@@ -8,14 +8,27 @@ exports.addProductImages = async (req, res) => {
     const { productId } = req.params;
     const { images } = req.body; // Array of { imageUrl, altText, imageOrder, isThumbnail, imageFormat }
 
+    // DEBUG LOGGING
+    console.log("Product ID:", productId);
+    console.log("Images:", images);
+
+    const pid = parseInt(productId);
+    if (isNaN(pid)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid product ID'
+      });
+    }
+
     // Validate product exists
     try {
-      await Product.getById(productId);
+      await Product.getById(pid);
     } catch (error) {
       if (error.kind === 'not_found') {
+        console.warn(`Product ${pid} not found for image attachment`);
         return res.status(404).json({
           status: 'error',
-          message: `Product with id ${productId} not found`
+          message: `Product with id ${pid} not found`
         });
       }
       throw error;
@@ -48,7 +61,7 @@ exports.addProductImages = async (req, res) => {
       }
 
       const newImage = new ProductImage(
-        productId,
+        pid,
         img.imageUrl,
         img.imageFormat || ProductImage.extractImageFormat(img.imageUrl),
         img.altText || `Product Image ${i + 1}`,
@@ -60,18 +73,19 @@ exports.addProductImages = async (req, res) => {
       addedImages.push(added);
     }
 
-    logger.info(`Added ${addedImages.length} images to product ${productId}`);
+    logger.info(`Added ${addedImages.length} images to product ${pid}`);
 
     return res.status(201).json({
       status: 'success',
       message: `${addedImages.length} images added successfully`,
       data: addedImages
     });
-  } catch (error) {
-    logger.error(`Add product images error: ${error.message}`);
+  } catch (err) {
+    console.error("Image insert error:", err);
     return res.status(500).json({
       status: 'error',
-      message: 'Error adding images'
+      message: 'Error adding images',
+      error: err.message
     });
   }
 };
@@ -173,7 +187,7 @@ exports.clearProductCache = () => {
 // ============================================================
 exports.getAllProductsWithImages = async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
     // Check cache first
     const cachedProducts = getCachedProducts();
@@ -193,7 +207,7 @@ exports.getAllProductsWithImages = async (req, res) => {
 
     // Fetch from DB with timeout protection
     const dbPromise = ProductImage.getAllProductsWithImages();
-    const timeoutMs = 10000; // 10s timeout
+    const timeoutMs = 25000; // Increased to 25s for Render cold starts
     const timeoutPromise = new Promise((resolve, reject) => {
       setTimeout(() => reject(new Error('DB query timeout')), timeoutMs);
     });
@@ -205,7 +219,7 @@ exports.getAllProductsWithImages = async (req, res) => {
       logger.error(`Get all products DB timeout/failure: ${err.message}`);
       return res.status(503).json({
         status: 'error',
-        message: 'Service temporarily unavailable, please try again shortly',
+        message: 'Service is processing your request. Please refresh in a moment. (Optimizing database...)',
         data: [],
         total: 0
       });
@@ -218,10 +232,10 @@ exports.getAllProductsWithImages = async (req, res) => {
       const imageURLService = require('../services/imageURLService');
       // Use FAST method: refreshProductsDirectImageUrls - NO signing, no S3 API calls
       products = imageURLService.refreshProductsDirectImageUrls(products);
-      
+
       // Cache the result
       setCachedProducts(products);
-      
+
       const duration = Date.now() - startTime;
       logger.info(`✅ Retrieved ${products.length} products with DIRECT URLs (${duration}ms)`);
     } catch (err) {

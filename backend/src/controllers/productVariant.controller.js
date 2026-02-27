@@ -14,11 +14,11 @@ exports.getProductVariants = async (req, res) => {
   }
 
   try {
-    const result = await db.query(variantQueries.getVariantsByProductId, [productId]);
+    const [rows] = await db.query(variantQueries.getVariantsByProductId, [productId]);
     return res.status(200).json({
       status: 'success',
-      data: result.rows || [],
-      total: result.rows ? result.rows.length : 0
+      data: rows || [],
+      total: rows ? rows.length : 0
     });
   } catch (err) {
     logger.error(`Error fetching variants: ${err.message}`);
@@ -41,8 +41,8 @@ exports.getVariant = async (req, res) => {
   }
 
   try {
-    const result = await db.query(variantQueries.getVariantById, [variantId]);
-    if (!result.rows || result.rows.length === 0) {
+    const [rows] = await db.query(variantQueries.getVariantById, [variantId]);
+    if (!rows || rows.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Variant not found'
@@ -51,7 +51,7 @@ exports.getVariant = async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      data: result.rows[0]
+      data: rows[0]
     });
   } catch (err) {
     logger.error(`Error fetching variant: ${err.message}`);
@@ -79,7 +79,7 @@ exports.createVariant = async (req, res) => {
   const isActive = true;
 
   try {
-    const result = await db.query(
+    const [result] = await db.query(
       variantQueries.createVariant,
       [productId, variant_name, variant_value, unit, price, stock, isActive]
     );
@@ -88,7 +88,7 @@ exports.createVariant = async (req, res) => {
       status: 'success',
       message: 'Variant created successfully',
       data: {
-        id: result.rows[0].id,
+        id: result.id || result.insertId,
         product_id: productId,
         variant_name,
         variant_value,
@@ -127,13 +127,20 @@ exports.updateVariant = async (req, res) => {
   }
 
   const unit = variant_unit || 'ml';
-  const active = is_active !== undefined ? is_active : 1;
+  const active = is_active !== undefined ? !!is_active : true;
 
   try {
-    const result = await db.query(
+    const [result] = await db.query(
       variantQueries.updateVariant,
       [variant_name, variant_value, unit, price, stock, active, variantId]
     );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Variant not found'
+      });
+    }
 
     return res.status(200).json({
       status: 'success',
@@ -161,7 +168,15 @@ exports.deleteVariant = async (req, res) => {
   }
 
   try {
-    await db.query(variantQueries.deleteVariant, [variantId]);
+    const [result] = await db.query(variantQueries.deleteVariant, [variantId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Variant not found'
+      });
+    }
+
     return res.status(200).json({
       status: 'success',
       message: 'Variant deleted successfully'

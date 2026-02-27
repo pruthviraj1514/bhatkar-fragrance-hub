@@ -2,32 +2,15 @@
 
 ## Prerequisites
 - GitHub repo connected to Render
-- MySQL database hosted externally (Render doesn't support local databases)
+- PostgreSQL database hosted on Supabase (already migrated)
 
-## Step 1: Set Up External MySQL Database
+## Step 1: Get Supabase Connection String
 
-For Render, you need a cloud-hosted MySQL database. Choose one:
-
-### Option A: AWS RDS (Recommended for production)
-1. Go to [AWS RDS Console](https://console.aws.amazon.com/rds/)
-2. Create MySQL 8.0 database
-3. Note down:
-   - Endpoint (e.g., `mydb.xxxxx.us-east-1.rds.amazonaws.com`)
-   - Master username
-   - Master password
-   - Database name
-   - Port (default: 3306)
-
-### Option B: PlanetScale (MySQL-compatible, free tier)
-1. Go to [PlanetScale](https://planetscale.com/)
-2. Create new database
-3. Create `main` branch
-4. Get connection string credentials
-
-### Option C: Aiven (Free tier available)
-1. Go to [Aiven](https://aiven.io/)
-2. Create MySQL service
-3. Note down connection details
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project → **Settings** → **Database**
+3. Find the **Connection String** section
+4. Copy the **URI** format (Pooler connection recommended for Render)
+   - It should look like: `postgresql://postgres:[PASSWORD]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true`
 
 ## Step 2: Connect Backend to Render
 
@@ -36,47 +19,38 @@ For Render, you need a cloud-hosted MySQL database. Choose one:
 3. **Select your GitHub repo** (`bhatkar-fragrance-hub`)
 4. **Configuration:**
    - Name: `bhatkar-backend` (or similar)
-   - Environment: `Node`
-   - Build Command: `npm i` (default is fine)
-   - Start Command: `npm start` (already in `Procfile`)
+   - Environment: `Node` (Version 18+ recommended)
+   - Root Directory: `backend`
+   - Build Command: `npm install`
+   - Start Command: `npm start`
    - Instance Type: Free tier is OK for development
 
 ## Step 3: Set Environment Variables in Render
 
 In the Render dashboard, go to your service → **Environment**
 
-Add these variables based on your database choice:
+Add these essential variables:
 
 ```
-DB_HOST=<your-database-host>
-DB_USER=<your-database-user>
-DB_PASSWORD=<your-database-password>
-DB_NAME=fragrance_hub
-DB_PORT=3306
+DATABASE_URL=postgresql://postgres:[PASSWORD]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 JWT_SECRET_KEY=d_aepb5oKnJBvBemM_jaavme1vqEU7tEletSnp98IxY
 NODE_ENV=production
+FRONTEND_URL=https://bhatkar-fragrance-hub.onrender.com
 ```
 
-### Example for AWS RDS:
+### Optional S3 (Railway Storage):
 ```
-DB_HOST=mydb.xxxxx.us-east-1.rds.amazonaws.com
-DB_USER=admin
-DB_PASSWORD=MySecurePassword123!
-DB_NAME=fragrance_hub
-DB_PORT=3306
-JWT_SECRET_KEY=d_aepb5oKnJBvBemM_jaavme1vqEU7tEletSnp98IxY
-NODE_ENV=production
+S3_ENDPOINT=https://t3.storageapi.dev
+S3_BUCKET=stocked-cupboard-bdb4pjnh
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
 ```
 
-### Example for PlanetScale:
+### Razorpay Integration:
 ```
-DB_HOST=xxx.us-east-1.psdb.cloud
-DB_USER=root
-DB_PASSWORD=<access_token>
-DB_NAME=bhatkar_db
-DB_PORT=3306
-JWT_SECRET_KEY=d_aepb5oKnJBvBemM_jaavme1vqEU7tEletSnp98IxY
-NODE_ENV=production
+RAZORPAY_KEY_ID=...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
 ```
 
 ## Step 4: Deploy
@@ -88,72 +62,30 @@ NODE_ENV=production
 
 ## Step 5: Connect React Frontend
 
-Update your React frontend's API base URL in `src/lib/axios.ts`:
-
-```typescript
-const api = axios.create({
-  baseURL: 'https://bhatkar-backend.onrender.com/api',
-  // ... rest of config
-});
-```
-
-Or use an environment variable:
-
-```typescript
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-});
-```
-
-And in your `.env` (frontend):
+Update your React frontend's API base URL in `.env` (root):
 
 ```
-VITE_API_URL=https://bhatkar-backend.onrender.com/api
+VITE_API_BASE_URL=https://bhatkar-backend.onrender.com/api
 ```
 
-## Step 6: Auto-Deploy on Git Push
+## Step 6: SSL/TLS Connections
 
-Render watches your GitHub repo. Every time you:
-```bash
-git push origin main
-```
-
-Render automatically redeploys your backend! 🚀
+The backend automatically handles SSL for Supabase:
+- It uses the consolidated connection pool in `src/config/db.js`
+- It is optimized for serverless environments using PGBouncer (Port 6543)
 
 ## Troubleshooting
 
-### "Missing required credential" error
-- Make sure all env variables are set correctly in Render dashboard
-- Check database credentials are correct
-- Database must be reachable from Render (whitelisted IP if using RDS)
+### "Too many connections" error
+- Ensure you are using the **Pooler connection string** (Port 6543)
+- Verify `?pgbouncer=true` is at the end of your `DATABASE_URL`
 
-### "Connection refused" error
-- Verify database host is correct
-- For AWS RDS: add Render's IP to Security Group inbound rules
-- For PlanetScale: enable network access
+### "Connection Refused"
+- Supabase allows all IP addresses by default, but check if there are any network restrictions.
+- Ensure the password doesn't contain special characters that aren't URL-encoded.
 
 ### Logs
 View logs in Render dashboard:
 1. Go to your service
 2. Click **Logs** tab
-3. Check recent errors
-
-## Production Best Practices
-
-✅ Always use `NODE_ENV=production` in Render
-✅ Use strong passwords for DB (not `pass`)
-✅ Use cloud-managed databases, not local containers
-✅ Enable CORS only for your frontend domain
-✅ Use HTTPS (Render provides SSL automatically)
-✅ Keep JWT_SECRET_KEY secure (rotate periodically)
-
-## SSL/TLS Connections
-
-The backend now supports SSL for database connections:
-- When `NODE_ENV=production`, SSL is **enabled**
-- When `NODE_ENV=development`, SSL is **disabled**
-
-This is configured in `src/config/db.config.js`:
-```javascript
-ssl: process.env.NODE_ENV === 'production' ? true : false
-```
+3. Check for "✅ PostgreSQL Connected" message on startup.

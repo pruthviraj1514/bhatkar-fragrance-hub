@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET_KEY } = require('../utils/secrets');
 const { compare: comparePassword } = require('../utils/password');
 const { logger } = require('../utils/logger');
+const Product = require('../models/product.model');
 
 // Fixed admin credentials
 const ADMIN_EMAIL = 'admin@bhatkar.com';
@@ -35,10 +36,10 @@ exports.login = (req, res) => {
 
         // Generate JWT token with admin flag
         const token = jwt.sign(
-            { 
-                id: 1, 
+            {
+                id: 1,
                 email: ADMIN_EMAIL,
-                isAdmin: true 
+                isAdmin: true
             },
             JWT_SECRET_KEY,
             { expiresIn: '7d' }
@@ -92,7 +93,6 @@ exports.getProfile = (req, res) => {
 
 /**
  * Admin Logout
- * Simply returns success (token invalidation handled client-side)
  */
 exports.logout = (req, res) => {
     try {
@@ -107,5 +107,108 @@ exports.logout = (req, res) => {
             status: 'error',
             message: 'Internal server error.'
         });
+    }
+};
+
+// ========================================================================
+// PRODUCT MANAGEMENT
+// ========================================================================
+
+/**
+ * Create Product
+ */
+exports.createProduct = async (req, res) => {
+    try {
+        const productData = req.body;
+        const result = await Product.create(productData);
+        logger.info(`Admin created product: ${result.id}`);
+        res.status(201).json({
+            status: 'success',
+            message: 'Product created successfully',
+            data: result
+        });
+    } catch (error) {
+        logger.error(`Error creating product: ${error.message}`);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * Get All Products
+ */
+exports.getAllProducts = async (req, res) => {
+    try {
+        const products = await Product.getAll();
+        res.status(200).json({
+            status: 'success',
+            data: products
+        });
+    } catch (error) {
+        logger.error(`Error fetching products: ${error.message}`);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * Get Product By ID
+ */
+exports.getProductById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const product = await Product.getById(id);
+        res.status(200).json({
+            status: 'success',
+            data: product
+        });
+    } catch (error) {
+        if (error.kind === 'not_found') {
+            return res.status(404).json({ status: 'error', message: 'Product not found' });
+        }
+        logger.error(`Error fetching product ${req.params.id}: ${error.message}`);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * Update Product
+ */
+exports.updateProduct = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updatedData = req.body;
+        const result = await Product.update(id, updatedData);
+        logger.info(`Admin updated product: ${id}`);
+        res.status(200).json({
+            status: 'success',
+            message: 'Product updated successfully',
+            data: result
+        });
+    } catch (error) {
+        if (error.kind === 'not_found') {
+            return res.status(404).json({ status: 'error', message: 'Product not found' });
+        }
+        logger.error(`Error updating product ${req.params.id}: ${error.message}`);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * Delete Product
+ */
+exports.deleteProduct = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Product.delete(id);
+        logger.info(`Admin deleted product: ${id}`);
+        res.status(200).json({
+            status: 'success',
+            message: 'Product deleted successfully'
+        });
+    } catch (error) {
+        if (error.kind === 'not_found') {
+            return res.status(404).json({ status: 'error', message: 'Product not found' });
+        }
+        logger.error(`Error deleting product ${req.params.id}: ${error.message}`);
+        res.status(500).json({ status: 'error', message: error.message });
     }
 };

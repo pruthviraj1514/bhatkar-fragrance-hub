@@ -14,7 +14,7 @@ exports.getAllProducts = async (req, res) => {
         logger.error(`Get all products error: ${error.message}`);
         return res.status(500).send({
             status: 'error',
-            message: 'Internal server error.' 
+            message: 'Internal server error.'
         });
     }
 };
@@ -68,9 +68,9 @@ exports.createProduct = async (req, res) => {
             concentration,
             description || null,
             stock || 0,
-            is_best_seller || false,
-            is_luxury_product || false,
-            is_active !== undefined ? is_active : 0,
+            !!is_best_seller,
+            !!is_luxury_product,
+            is_active !== undefined ? !!is_active : false,
             original_price || null,
             discount_percentage || 0,
             shipping_cost || 0,
@@ -123,9 +123,9 @@ exports.updateProduct = async (req, res) => {
             concentration,
             description: description || null,
             stock: stock || 0,
-            is_best_seller: is_best_seller || false,
-            is_luxury_product: is_luxury_product || false,
-            is_active: is_active !== undefined ? is_active : 0
+            is_best_seller: !!is_best_seller,
+            is_luxury_product: !!is_luxury_product,
+            is_active: is_active !== undefined ? !!is_active : false
         };
 
         // If attempting to set product active, enforce minimum 2 active reviews

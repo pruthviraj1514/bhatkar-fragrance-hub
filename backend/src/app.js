@@ -2,6 +2,8 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const path = require("path");
+const compression = require("compression");
+const helmet = require("helmet");
 
 const authRoute = require("./routes/auth.route");
 const adminRoute = require("./routes/admin.route");
@@ -12,14 +14,20 @@ const orderRoute = require("./routes/order.route");
 const uploadRoute = require("./routes/upload.route");
 const imageRoute = require("./routes/image.route");
 const paymentRoute = require("./routes/paymentRoutes");
-const { httpLogStream } = require("./utils/logger");
+const { httpLogStream, logger } = require("./utils/logger");
 
 const app = express();
 
-// ===== CRITICAL: CORS MUST BE FIRST - Apply before all other middleware =====
+// ========================================================================
+// SECURITY & OPTIMIZATION MIDDLEWARE
+// ========================================================================
+app.use(helmet());
+app.use(compression());
+
+// ===== CRITICAL: CORS MUST BE FIRST =====
 const allowedOrigins = [
   "https://bhatkar-fragrance-hub-5.onrender.com",
-  process.env.FRONTEND_URL // Keep env variable as backup just in case
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 const corsOptions = {
@@ -29,156 +37,94 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
 };
 
-// Use cors middleware
 app.use(cors(corsOptions));
-// Handle preflight requests
 app.options("*", cors(corsOptions));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-app.use(morgan("dev"));
-app.use(morgan("combined", { stream: httpLogStream }));
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan("dev"));
+  app.use(morgan("combined", { stream: httpLogStream }));
+}
 
-// ===== HEALTH CHECK ENDPOINT (for debugging) =====
+// ========================================================================
+// HEALTH CHECK ENDPOINTS
+// ========================================================================
+
 app.get("/health", (req, res) => {
-  const railwayConfig = {
-    endpoint: process.env.S3_ENDPOINT || "❌ NOT SET",
-    bucket: process.env.S3_BUCKET || "❌ NOT SET",
-    accessKey: process.env.S3_ACCESS_KEY ? "✅ SET" : "❌ NOT SET",
-    secretKey: process.env.S3_SECRET_KEY ? "✅ SET" : "❌ NOT SET",
-  };
-
-  console.log("🏥 Health check requested. Railway Storage config:", railwayConfig);
-
   res.status(200).json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    message: "Backend API is running with CORS enabled",
-    railwayStorage: railwayConfig,
+    uptime: process.uptime(),
+    env: process.env.NODE_ENV || 'development'
   });
 });
 
-// ===== API HEALTH CHECK ENDPOINT WITH DATABASE =====
 app.get("/api/health", async (req, res) => {
   const db = require("./config/db");
-
   try {
-    // Try database health check
-    const [rows] = await db.query('SELECT 1');
-
+    await db.query('SELECT 1');
     res.status(200).json({
       status: "ok",
-      database: "connected"
+      database: "connected",
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({
+    logger.error('Database health check failed:', error.message);
+    res.status(503).json({
       status: "error",
-      timestamp: new Date().toISOString(),
-      message: "API starting or Database connection failed",
-      error: error.message
+      database: "disconnected",
+      message: error.message
     });
   }
 });
 
 app.get("/", (req, res) => {
-  res.status(200).send({
+  res.status(200).json({
     status: "success",
-    data: {
-      message: "API working fine"
-    }
+    message: "Bhatkar Fragrance Hub API",
+    version: "1.0.0"
   });
 });
 
-// ===== DEBUG MIDDLEWARE - Log all incoming requests and timing =====
-app.use((req, res, next) => {
-  const start = Date.now();
-  console.log(`📨 [START] ${req.method} ${req.path}`);
+// ========================================================================
+// API ROUTES
+// ========================================================================
 
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`📬 [FINISH] ${req.method} ${req.path} - ${res.statusCode} [${duration}ms]`);
-  });
-
-  next();
-});
-
-// ===== API ROUTES =====
-console.log('\n🚀 REGISTERING API ROUTES:');
-console.log('   ✅ POST /api/auth/* → authRoute');
 app.use("/api/auth", authRoute);
-
-console.log('   ✅ POST /api/admin/* → adminRoute');
 app.use("/api/admin", adminRoute);
-
-console.log('   ✅ GET /api/products/* → productRoute');
 app.use("/api/products", productRoute);
-
-console.log('   ✅ GET /api/variants/* → variantRoute');
 app.use("/api/variants", variantRoute);
-
-console.log('   ✅ GET /api/reviews/* → reviewsRoute');
 app.use("/api/reviews", reviewsRoute);
-
-console.log('   ✅ POST /api/orders/* → orderRoute');
 app.use("/api/orders", orderRoute);
-
-console.log('   ✅ POST /api/upload-image/* → uploadRoute');
 app.use("/api/upload-image", uploadRoute);
-
-console.log('   ✅ GET /api/images/* → imageRoute');
 app.use("/api/images", imageRoute);
-
-console.log('   ✅ POST /api/payment/* → paymentRoute');
-console.log(`       ├─ GET /health → Payment health check`);
-console.log(`       ├─ POST /create-order → Create payment order`);
-console.log(`       ├─ POST /verify → Verify payment`);
-console.log(`       ├─ POST /webhook → Razorpay webhook`);
-console.log(`       ├─ GET /order/:orderId → Get order`);
-console.log(`       └─ GET /payment/:paymentId → Get payment`);
 app.use("/api/payment", paymentRoute);
 
-console.log('\n✨ All routes registered successfully!\n');
+// ========================================================================
+// ERROR HANDLING
+// ========================================================================
 
-// ===== 404 HANDLER =====
+// 404 Handler
 app.use((req, res) => {
-  const availableRoutes = [
-    'GET  /health',
-    'GET  /',
-    'GET  /api/health',
-    'POST /api/auth/signin',
-    'POST /api/auth/signup',
-    'GET  /api/products/with-images/all',
-    'GET  /api/products/:id',
-    'POST /api/payment/health',
-    'POST /api/payment/create-order',
-    'POST /api/payment/verify',
-    'POST /api/payment/webhook',
-    'GET  /api/payment/order/:orderId',
-  ];
-
-  console.error(`❌ 404 ERROR: ${req.method} ${req.path} not found`);
-
+  logger.warn(`404 - Not Found: ${req.method} ${req.path}`);
   res.status(404).json({
     status: "error",
     message: `Route ${req.method} ${req.path} not found`,
-    hint: "Try GET /api/payment/health to verify payment routes are loaded",
-    timestamp: new Date().toISOString(),
-    availablePaymentRoutes: [
-      'GET /api/payment/health',
-      'POST /api/payment/create-order',
-      'POST /api/payment/verify',
-    ]
+    timestamp: new Date().toISOString()
   });
 });
 
-// ===== ERROR HANDLER =====
+// Global Error Handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(err.statusCode || 500).json({
+  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+  if (err.stack) logger.error(err.stack);
+
+  res.status(err.status || 500).json({
     status: "error",
     message: err.message || "Internal server error",
     timestamp: new Date().toISOString()

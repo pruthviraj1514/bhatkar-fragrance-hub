@@ -45,13 +45,13 @@ async function runStartupMigrations(db, loggerUtil = logger) {
  */
 async function addIsActiveColumn(db, loggerUtil) {
   try {
-    // First check if column exists
+    // Ported to PostgreSQL
     const [columns] = await db.query(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = 'products' 
-      AND TABLE_SCHEMA = DATABASE()
-      AND COLUMN_NAME = 'is_active'
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'products' 
+      AND table_schema = 'public'
+      AND column_name = 'is_active'
     `);
 
     if (columns.length > 0) {
@@ -63,19 +63,13 @@ async function addIsActiveColumn(db, loggerUtil) {
     loggerUtil.info('  Adding is_active column to products table...');
     await db.query(`
       ALTER TABLE products 
-      ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 
-      COMMENT 'Product visibility: 1=active, 0=inactive'
+      ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE
     `);
 
     loggerUtil.info('  ✅ Added is_active column');
 
   } catch (error) {
-    // Ignore if column already exists (error code ER_DUP_FIELDNAME)
-    if (error.code === 'ER_DUP_FIELDNAME' || error.code === 1060) {
-      loggerUtil.debug('  ✓ Column is_active already exists (duplicate field error)');
-      return;
-    }
-    throw error;
+    loggerUtil.warn('Could not add is_active column:', error.message);
   }
 }
 
@@ -84,13 +78,13 @@ async function addIsActiveColumn(db, loggerUtil) {
  */
 async function addIsBestSellerColumn(db, loggerUtil) {
   try {
-    // First check if column exists
+    // Ported to PostgreSQL
     const [columns] = await db.query(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = 'products' 
-      AND TABLE_SCHEMA = DATABASE()
-      AND COLUMN_NAME = 'is_best_seller'
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'products' 
+      AND table_schema = 'public'
+      AND column_name = 'is_best_seller'
     `);
 
     if (columns.length > 0) {
@@ -102,19 +96,13 @@ async function addIsBestSellerColumn(db, loggerUtil) {
     loggerUtil.info('  Adding is_best_seller column to products table...');
     await db.query(`
       ALTER TABLE products 
-      ADD COLUMN is_best_seller TINYINT(1) NOT NULL DEFAULT 0 
-      COMMENT 'Marks product as featured best seller'
+      ADD COLUMN is_best_seller BOOLEAN NOT NULL DEFAULT FALSE
     `);
 
     loggerUtil.info('  ✅ Added is_best_seller column');
 
   } catch (error) {
-    // Ignore if column already exists
-    if (error.code === 'ER_DUP_FIELDNAME' || error.code === 1060) {
-      loggerUtil.debug('  ✓ Column is_best_seller already exists');
-      return;
-    }
-    throw error;
+    loggerUtil.warn('Could not add is_best_seller column:', error.message);
   }
 }
 
@@ -141,6 +129,15 @@ async function createIndexes(db, loggerUtil) {
       ['is_active', 'created_on']
     );
 
+    // Index 3: CRITICAL Performance index for joins
+    await createIndexIfNotExists(
+      db,
+      loggerUtil,
+      'idx_product_images_pid',
+      'product_images',
+      'product_id'
+    );
+
   } catch (error) {
     loggerUtil.warn('Could not create indexes:', error.message);
     // Don't throw - indexes are optional
@@ -152,13 +149,12 @@ async function createIndexes(db, loggerUtil) {
  */
 async function createIndexIfNotExists(db, loggerUtil, indexName, tableName, columns) {
   try {
-    // Check if index exists
+    // Ported to PostgreSQL
     const [indexes] = await db.query(`
-      SELECT INDEX_NAME 
-      FROM INFORMATION_SCHEMA.STATISTICS 
-      WHERE TABLE_NAME = ? 
-      AND TABLE_SCHEMA = DATABASE()
-      AND INDEX_NAME = ?
+      SELECT indexname 
+      FROM pg_indexes 
+      WHERE tablename = $1 
+      AND indexname = $2
     `, [tableName, indexName]);
 
     if (indexes.length > 0) {
@@ -168,22 +164,18 @@ async function createIndexIfNotExists(db, loggerUtil, indexName, tableName, colu
 
     // Create index
     const columnList = Array.isArray(columns) ? columns.join(', ') : columns;
-    loggerUtil.debug(`  Creating index ${indexName} on ${tableName}(${columnList})...`);
+    loggerUtil.info(`  Creating index ${indexName} on ${tableName}(${columnList})...`);
 
+    // PostgreSQL uses double quotes or no quotes, NO backticks
     await db.query(`
-      CREATE INDEX \`${indexName}\` 
-      ON \`${tableName}\` (\`${columnList.replace(/,\s*/g, '`, `')}\`)
+      CREATE INDEX IF NOT EXISTS "${indexName}" 
+      ON "${tableName}" (${Array.isArray(columns) ? columns.map(c => `"${c}"`).join(', ') : `"${columns}"`})
     `);
 
-    loggerUtil.debug(`  ✅ Created index ${indexName}`);
+    loggerUtil.info(`  ✅ Created index ${indexName}`);
 
   } catch (error) {
-    // Ignore if index already exists or other non-critical errors
-    if (error.message.includes('Duplicate')) {
-      loggerUtil.debug(`  ✓ Index ${indexName} already exists`);
-      return;
-    }
-    throw error;
+    loggerUtil.warn(`  ⚠️ Could not create index ${indexName}:`, error.message);
   }
 }
 

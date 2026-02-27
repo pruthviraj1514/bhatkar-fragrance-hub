@@ -1,4 +1,4 @@
-const db = require('../config/db');  // Consolidated MySQL Pool
+const db = require('../config/db');  // Consolidated PostgreSQL/Supabase Pool
 const {
   getAllOrders: getAllOrdersQuery,
   getOrderById: getOrderByIdQuery,
@@ -17,14 +17,16 @@ class Order {
 
   static async create(newOrder) {
     try {
-      // MySQL: result.insertId instead of result.rows[0].id
-      const [result] = await db.query(createOrderQuery, [
+      // Create order entry in PostgreSQL
+      // The query uses RETURNING * so it returns the row
+      const [rows] = await db.query(createOrderQuery, [
         newOrder.customer_name,
         newOrder.customer_email,
         newOrder.total,
         newOrder.status || 'pending'
       ]);
-      return { id: result.insertId, ...newOrder };
+      const result = rows[0] || rows;
+      return { id: result.id, ...newOrder };
     } catch (error) {
       logger.error(error.message);
       throw error;
@@ -33,7 +35,7 @@ class Order {
 
   static async getAll() {
     try {
-      // MySQL: [rows] instead of result.rows
+      // Fetch all orders
       const [rows] = await db.query(getAllOrdersQuery);
       return rows;
     } catch (error) {
@@ -44,9 +46,9 @@ class Order {
 
   static async getById(id) {
     try {
-      // MySQL: [rows] instead of result.rows
+      // Fetch order by ID
       const [rows] = await db.query(getOrderByIdQuery, [id]);
-      if (rows.length === 0) {
+      if (!rows || rows.length === 0) {
         const error = new Error(`Order with id ${id} not found`);
         error.kind = 'not_found';
         throw error;
@@ -60,7 +62,7 @@ class Order {
 
   static async updateStatus(id, status) {
     try {
-      // MySQL: result.affectedRows instead of result.rowCount
+      // Update status in PostgreSQL
       const [result] = await db.query(updateOrderStatusQuery, [status, id]);
       if (result.affectedRows === 0) {
         const error = new Error(`Order with id ${id} not found`);
