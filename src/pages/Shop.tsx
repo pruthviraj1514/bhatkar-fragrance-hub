@@ -195,8 +195,8 @@ export default function Shop() {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
+          p.name?.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query) ||
           (p as any).brand?.toLowerCase().includes(query)
       );
     }
@@ -204,7 +204,7 @@ export default function Shop() {
     // Category filter
     if (selectedCategories.length > 0) {
       result = result.filter((p) =>
-        selectedCategories.includes(p.category.toLowerCase())
+        selectedCategories.includes(p.category?.toLowerCase() || '')
       );
     }
 

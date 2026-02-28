@@ -5,13 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
+export function formatPrice(price: any): string {
+  // Handle empty/null values
+  if (price === null || price === undefined || isNaN(Number(price))) {
+    return "0";
+  }
+
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+
+  try {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numPrice);
+  } catch (err) {
+    console.error("formatPrice error:", err);
+    return String(numPrice);
+  }
 }
 
 export function slugify(text: string): string {

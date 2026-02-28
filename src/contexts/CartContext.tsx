@@ -90,7 +90,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         ...state,
         items: state.items.map((item) =>
           item.product.id === action.payload.productId &&
-          item.selectedSize === action.payload.size
+            item.selectedSize === action.payload.size
             ? { ...item, quantity: action.payload.quantity }
             : item
         ),
@@ -151,7 +151,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = state.items.reduce(
-    (sum, item) => sum + item.selectedPrice * item.quantity,
+    (sum, item) => sum + (Number(item.selectedPrice) || 0) * item.quantity,
     0
   );
 
