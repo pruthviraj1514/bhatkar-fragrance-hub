@@ -37,7 +37,7 @@ ORDER BY image_order ASC
 const getProductWithImages = `
 SELECT 
   p.*,
-  COALESCE(AVG(r.rating), 0) as avg_rating,
+  COALESCE(ROUND(AVG(r.rating), 2), 0)::NUMERIC as avg_rating,
   COUNT(DISTINCT r.id)::INTEGER as total_reviews,
   COALESCE(
     (SELECT json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL) FROM product_images pi WHERE pi.product_id = p.id),
@@ -52,7 +52,7 @@ GROUP BY p.id
 const getAllProductsWithImages = `
 SELECT 
   p.*,
-  COALESCE(AVG(r.rating), 0) as avg_rating,
+  COALESCE(ROUND(AVG(r.rating), 2), 0)::NUMERIC as avg_rating,
   COUNT(DISTINCT r.id)::INTEGER as total_reviews,
   COALESCE(
     (SELECT json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL) FROM product_images pi WHERE pi.product_id = p.id),

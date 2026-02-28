@@ -17,13 +17,13 @@ const getProductReviews = async (productId) => {
 const getReviewStats = async (productId) => {
   const query = `
     SELECT 
-      COUNT(*) as total_reviews,
-      ROUND(AVG(rating), 2) as average_rating,
-      SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star,
-      SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star,
-      SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star,
-      SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star,
-      SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star
+      COALESCE(COUNT(*), 0)::INTEGER as total_reviews,
+      COALESCE(ROUND(AVG(rating), 2), 0)::NUMERIC as average_rating,
+      COALESCE(SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END), 0)::INTEGER as five_star,
+      COALESCE(SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END), 0)::INTEGER as four_star,
+      COALESCE(SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END), 0)::INTEGER as three_star,
+      COALESCE(SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END), 0)::INTEGER as two_star,
+      COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0)::INTEGER as one_star
     FROM reviews
     WHERE product_id = $1 AND is_approved = true AND is_active = true
   `;

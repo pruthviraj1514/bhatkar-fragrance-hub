@@ -18,7 +18,7 @@
 const crypto = require('crypto');
 const db = require('../config/db');
 const { logger } = require('../utils/logger');
-const OrderModel = require('../models/orderModel');
+const OrderModel = require('../models/order.model');
 
 /**
  * Verify Razorpay webhook signature

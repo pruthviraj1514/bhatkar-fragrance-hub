@@ -36,7 +36,7 @@ SELECT
     json_agg(
       json_build_object(
         'id', pi.id,
-        'url', pi.image_url,
+        'image_url', pi.image_url,
         'alt', pi.alt_text,
         'order', pi.image_order,
         'thumb', pi.is_thumbnail
@@ -72,7 +72,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
@@ -117,7 +117,7 @@ SELECT
     json_agg(
       json_build_object(
         'id', pi.id,
-        'url', pi.image_url,
+        'image_url', pi.image_url,
         'alt', pi.alt_text,
         'order', pi.image_order,
         'thumb', pi.is_thumbnail
@@ -152,7 +152,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
@@ -192,7 +192,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
@@ -234,7 +234,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
@@ -273,7 +273,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
@@ -370,7 +370,7 @@ SELECT
     (
       SELECT json_agg(
         json_build_object(
-          'url', pi2.image_url,
+          'image_url', pi2.image_url,
           'thumb', pi2.is_thumbnail
         ) ORDER BY pi2.image_order ASC
       ) FROM product_images pi2 WHERE pi2.product_id = p.id LIMIT 1
