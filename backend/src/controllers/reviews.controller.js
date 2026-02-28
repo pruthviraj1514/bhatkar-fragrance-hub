@@ -54,6 +54,7 @@ exports.getAllProductReviews = asyncHandler(async (req, res) => {
 
 // Create a new review
 exports.createReview = asyncHandler(async (req, res) => {
+    const productIdFromUrl = req.params.productId;
     const { product_id, productId, reviewer_name, rating, review_text, verified_purchase, is_approved, is_active } = req.body;
     // Support both URL params and body
     const productId_ = productIdFromUrl || product_id || productId;
