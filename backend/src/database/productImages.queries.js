@@ -37,23 +37,14 @@ ORDER BY image_order ASC
 const getProductWithImages = `
 SELECT 
   p.*,
-  COALESCE((SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as avg_rating,
-  (SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = true)::INTEGER as total_reviews,
+  COALESCE(AVG(r.rating), 0) as avg_rating,
+  COUNT(DISTINCT r.id)::INTEGER as total_reviews,
   COALESCE(
-    json_agg(
-      json_build_object(
-        'id', pi.id,
-        'image_url', pi.image_url,
-        'image_format', pi.image_format,
-        'alt_text', pi.alt_text,
-        'image_order', pi.image_order,
-        'is_thumbnail', pi.is_thumbnail
-      ) ORDER BY pi.image_order ASC
-    ) FILTER (WHERE pi.id IS NOT NULL),
+    (SELECT json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL) FROM product_images pi WHERE pi.product_id = p.id),
     '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
+LEFT JOIN reviews r ON p.id = r.product_id AND r.is_approved = true
 WHERE p.id = $1
 GROUP BY p.id
 `;
@@ -61,23 +52,14 @@ GROUP BY p.id
 const getAllProductsWithImages = `
 SELECT 
   p.*,
-  COALESCE((SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as avg_rating,
-  (SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = true)::INTEGER as total_reviews,
+  COALESCE(AVG(r.rating), 0) as avg_rating,
+  COUNT(DISTINCT r.id)::INTEGER as total_reviews,
   COALESCE(
-    json_agg(
-      json_build_object(
-        'id', pi.id,
-        'image_url', pi.image_url,
-        'image_format', pi.image_format,
-        'alt_text', pi.alt_text,
-        'image_order', pi.image_order,
-        'is_thumbnail', pi.is_thumbnail
-      ) ORDER BY pi.image_order ASC
-    ) FILTER (WHERE pi.id IS NOT NULL),
+    (SELECT json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL) FROM product_images pi WHERE pi.product_id = p.id),
     '[]'::json
   ) as images
 FROM products p
-LEFT JOIN product_images pi ON p.id = pi.product_id
+LEFT JOIN reviews r ON p.id = r.product_id AND r.is_approved = true
 GROUP BY p.id
 ORDER BY p.created_on DESC
 `;

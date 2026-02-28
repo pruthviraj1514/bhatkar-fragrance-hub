@@ -54,9 +54,21 @@ exports.getAllProductReviews = asyncHandler(async (req, res) => {
 
 // Create a new review
 exports.createReview = asyncHandler(async (req, res) => {
+    const {
+        product_id,
+        rating,
+        comment,
+        reviewer_name,
+        review_text,
+        verified_purchase,
+        is_verified,
+        is_approved,
+        is_active
+    } = req.body;
+
     // Strict type parsing
-    const pid = Number(req.body.product_id || req.body.productId || req.params.productId);
-    const rtg = Number(req.body.rating);
+    const pid = Number(product_id || req.body.productId || req.params.productId);
+    const rtg = Number(rating);
 
     // DEBUG LOGS
     console.log(`[Review Debug] Types: pid=${typeof pid}(${pid}), rating=${typeof rtg}(${rtg}), reviewer=${reviewer_name}`);
@@ -86,7 +98,7 @@ exports.createReview = asyncHandler(async (req, res) => {
     };
 
     const review = await reviewsQueries.createReview(reviewData);
-    logger.info(`Review created for product: ${productId_}`);
+    logger.info(`Review created for product: ${pid}`);
 
     return res.status(201).send({
         status: 'success',
