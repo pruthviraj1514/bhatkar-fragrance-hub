@@ -17,7 +17,8 @@ async function verifyUserOrders() {
     try {
         // 1. Check if orders table has data
         const db = require('./src/config/db');
-        const [orders] = await db.execute('SELECT * FROM orders LIMIT 1');
+        const result = await db.execute('SELECT * FROM orders LIMIT 1');
+        const orders = result.rows;
 
         if (orders.length === 0) {
             console.log('⚠️ No orders found in database. Please place an order first.');
@@ -29,7 +30,7 @@ async function verifyUserOrders() {
 
         // 2. Test the query logic directly
         const { getOrdersByUserId } = require('./src/database/orders.queries');
-        const [results] = await db.query(getOrdersByUserId, [userId]);
+        const { rows: results } = await db.query(getOrdersByUserId, [userId]);
 
         console.log(`✅ Direct Query Result: Found ${results.length} orders`);
         if (results.length > 0) {

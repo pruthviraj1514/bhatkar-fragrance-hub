@@ -13,8 +13,8 @@ router.get('/stats/:productId', reviewsController.getReviewStats);
 // Get featured reviews (public)
 router.get('/product/:productId/featured', reviewsController.getFeaturedReviews);
 
-// Get all reviews for a product (admin)
-router.get('/product/:productId/all', adminAuth, reviewsController.getAllProductReviews);
+// Get all reviews for a product (public now per instructions)
+router.get('/product/:productId/all', reviewsController.getAllProductReviews);
 
 // Get single review by ID - PUBLIC
 router.get('/:reviewId', reviewsController.getReviewById);

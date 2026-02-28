@@ -56,7 +56,7 @@ export default function ProductDetail() {
   // Display images: use variant-specific if available, else product images
   // Ensure we always have strings, never objects
   const displayImages = variantImages.length > 0
-    ? variantImages.map(img => typeof img === 'string' ? img : img.image_url)
+    ? variantImages.map(img => typeof img === 'string' ? img : img?.image_url)
     : (product?.images || []).filter((img: any): img is string => typeof img === 'string');
 
   useEffect(() => {

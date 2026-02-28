@@ -46,7 +46,7 @@ class ProductImage {
 
       // db.query wrapper returns [resultObj, fields] for INSERTS
       // resultObj contains the inserted row (due to RETURNING *) and resultObj.insertId
-      const [result] = await db.query(createProductImageQuery, [
+      const result = await db.query(createProductImageQuery, [
         newImage.productId,
         newImage.imageUrl,
         imageFormat,
@@ -55,15 +55,16 @@ class ProductImage {
         newImage.isThumbnail
       ]);
 
-      if (!result) {
+      if (!result.rows || result.rows.length === 0) {
         throw new Error('Failed to insert product image - no result returned');
       }
 
+      const insertedRow = result.rows[0];
       return {
-        id: result.id || result.insertId,
+        id: insertedRow.id,
         ...newImage,
         imageFormat,
-        created_on: result.created_on
+        created_on: insertedRow.created_on
       };
     } catch (error) {
       logger.error(`[PostgreSQL] Add image error: ${error.message}`);
@@ -76,8 +77,8 @@ class ProductImage {
    */
   static async getProductImages(productId) {
     try {
-      const [rows] = await db.query(getProductImagesQuery, [productId]);
-      return rows;
+      const result = await db.query(getProductImagesQuery, [productId]);
+      return result.rows;
     } catch (error) {
       logger.error(`[PostgreSQL] Get product images error: ${error.message}`);
       throw error;
@@ -90,12 +91,12 @@ class ProductImage {
    */
   static async getProductWithImages(productId) {
     try {
-      const [rows] = await db.query(getProductWithImagesQuery, [productId]);
-      if (!rows || rows.length === 0) {
+      const result = await db.query(getProductWithImagesQuery, [productId]);
+      if (!result.rows || result.rows.length === 0) {
         throw { kind: 'not_found' };
       }
 
-      const product = rows[0];
+      const product = result.rows[0];
 
       // PostgreSQL json_agg returns an array automatically with pg driver
       // If it somehow comes back as a string, parse it
@@ -141,9 +142,9 @@ class ProductImage {
    */
   static async getAllProductsWithImages() {
     try {
-      const [rows] = await db.query(getAllProductsWithImagesQuery);
+      const result = await db.query(getAllProductsWithImagesQuery);
 
-      return rows.map(product => {
+      return result.rows.map(product => {
         let images = product.images;
         if (typeof images === 'string') {
           try {
@@ -190,7 +191,7 @@ class ProductImage {
     try {
       const imageFormat = updates.imageFormat || ProductImage.extractImageFormat(updates.imageUrl);
 
-      const [result] = await db.query(updateProductImageQuery, [
+      const result = await db.query(updateProductImageQuery, [
         updates.imageUrl,
         imageFormat,
         updates.altText,
@@ -199,7 +200,7 @@ class ProductImage {
         productId
       ]);
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw { kind: 'not_found' };
       }
 
@@ -215,9 +216,9 @@ class ProductImage {
    */
   static async deleteImage(imageId, productId) {
     try {
-      const [result] = await db.query(deleteProductImageQuery, [imageId, productId]);
+      const result = await db.query(deleteProductImageQuery, [imageId, productId]);
 
-      if (result.affectedRows === 0) {
+      if (result.rowCount === 0) {
         throw { kind: 'not_found' };
       }
 
@@ -233,8 +234,8 @@ class ProductImage {
    */
   static async deleteProductImages(productId) {
     try {
-      const [result] = await db.query(deleteProductImagesQuery, [productId]);
-      return { message: `${result.affectedRows} images deleted successfully` };
+      const result = await db.query(deleteProductImagesQuery, [productId]);
+      return { message: `${result.rowCount} images deleted successfully` };
     } catch (error) {
       logger.error(`[PostgreSQL] Delete product images error: ${error.message}`);
       throw error;

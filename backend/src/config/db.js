@@ -86,15 +86,7 @@ verifyConnection().catch(err => logger.error('Unhandled DB verification error:',
 const queryWrapper = async (text, params) => {
     try {
         const res = await pool.query(text, params);
-        if (['INSERT', 'UPDATE', 'DELETE'].includes(res.command)) {
-            const resultObj = res.rows.length > 0 ? { ...res.rows[0] } : {};
-            resultObj.insertId = resultObj.id || null;
-            resultObj.affectedRows = res.rowCount;
-            // Returning an array where first element is result object
-            return [resultObj, res.fields];
-        }
-        // Returning an array where first element is rows array
-        return [res.rows, res.fields];
+        return res;
     } catch (err) {
         logger.error(`Database query error: ${err.message}\nQuery: ${text}`);
         throw err;

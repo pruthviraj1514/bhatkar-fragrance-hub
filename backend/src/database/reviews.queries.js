@@ -9,8 +9,8 @@ const getProductReviews = async (productId) => {
     WHERE product_id = $1 AND is_approved = true AND is_active = true
     ORDER BY created_at DESC
   `;
-  const [rows] = await db.query(query, [productId]);
-  return rows;
+  const result = await db.query(query, [productId]);
+  return result.rows;
 };
 
 // Get review statistics for a product
@@ -27,8 +27,8 @@ const getReviewStats = async (productId) => {
     FROM reviews
     WHERE product_id = $1 AND is_approved = true AND is_active = true
   `;
-  const [rows] = await db.query(query, [productId]);
-  return rows[0] || { total_reviews: 0, average_rating: 0 };
+  const result = await db.query(query, [productId]);
+  return result.rows[0] || { total_reviews: 0, average_rating: 0 };
 };
 
 // Get single review by ID
@@ -38,8 +38,8 @@ const getReviewById = async (reviewId) => {
     FROM reviews
     WHERE id = $1
   `;
-  const [rows] = await db.query(query, [reviewId]);
-  return rows[0] || null;
+  const result = await db.query(query, [reviewId]);
+  return result.rows[0] || null;
 };
 
 // Create a new review
@@ -48,7 +48,7 @@ const createReview = async (reviewData) => {
     INSERT INTO reviews (product_id, reviewer_name, rating, review_text, verified_purchase, is_approved, is_featured, is_active)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
   `;
-  const [result] = await db.query(query, [
+  const result = await db.query(query, [
     reviewData.product_id,
     reviewData.reviewer_name,
     reviewData.rating,
@@ -58,7 +58,7 @@ const createReview = async (reviewData) => {
     !!reviewData.is_featured,
     reviewData.is_active !== undefined ? !!reviewData.is_active : true
   ]);
-  return result;
+  return result.rows[0];
 };
 
 // Delete a review
@@ -66,8 +66,8 @@ const deleteReview = async (reviewId) => {
   const query = `
     DELETE FROM reviews WHERE id = $1
   `;
-  const [result] = await db.query(query, [reviewId]);
-  return { affectedRows: result.affectedRows };
+  const result = await db.query(query, [reviewId]);
+  return { affectedRows: result.rowCount };
 };
 
 // Get all reviews for a product (including unapproved - for admin)
@@ -78,8 +78,8 @@ const getAllProductReviews = async (productId) => {
     WHERE product_id = $1
     ORDER BY created_at DESC
   `;
-  const [rows] = await db.query(query, [productId]);
-  return rows;
+  const result = await db.query(query, [productId]);
+  return result.rows;
 };
 
 // Approve a review (admin)
@@ -87,8 +87,8 @@ const approveReview = async (reviewId) => {
   const query = `
     UPDATE reviews SET is_approved = true WHERE id = $1
   `;
-  const [result] = await db.query(query, [reviewId]);
-  return { affectedRows: result.affectedRows };
+  const result = await db.query(query, [reviewId]);
+  return { affectedRows: result.rowCount };
 };
 
 // Reject a review (admin)
@@ -96,22 +96,22 @@ const rejectReview = async (reviewId) => {
   const query = `
     UPDATE reviews SET is_approved = false WHERE id = $1
   `;
-  const [result] = await db.query(query, [reviewId]);
-  return { affectedRows: result.affectedRows };
+  const result = await db.query(query, [reviewId]);
+  return { affectedRows: result.rowCount };
 };
 
 // Mark review featured/unfeatured (admin)
 const setFeatured = async (reviewId, featured) => {
   const query = `UPDATE reviews SET is_featured = $1 WHERE id = $2`;
-  const [result] = await db.query(query, [!!featured, reviewId]);
-  return { affectedRows: result.affectedRows };
+  const result = await db.query(query, [!!featured, reviewId]);
+  return { affectedRows: result.rowCount };
 };
 
 // Set review active/inactive (admin)
 const setActive = async (reviewId, active) => {
   const query = `UPDATE reviews SET is_active = $1 WHERE id = $2`;
-  const [result] = await db.query(query, [!!active, reviewId]);
-  return { affectedRows: result.affectedRows };
+  const result = await db.query(query, [!!active, reviewId]);
+  return { affectedRows: result.rowCount };
 };
 
 // Get featured reviews for product (public) limited to 3
@@ -123,8 +123,8 @@ const getFeaturedReviews = async (productId, limit = 3) => {
     ORDER BY created_at DESC
     LIMIT $2
   `;
-  const [rows] = await db.query(query, [productId, limit]);
-  return rows;
+  const result = await db.query(query, [productId, limit]);
+  return result.rows;
 };
 
 module.exports = {

@@ -97,7 +97,7 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
   }
 
   return (
-      <div className={`product-image-carousel ${className}`}>
+    <div className={`product-image-carousel ${className}`}>
       {/* Main Image Display */}
       <div className="main-image-container">
         {!imageLoaded && (
@@ -107,8 +107,8 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
         )}
 
         <img
-          src={buildImageUrl(sortedImages[selectedImageIndex].image_url)}
-          alt={sortedImages[selectedImageIndex].alt_text}
+          src={buildImageUrl(sortedImages[selectedImageIndex]?.image_url)}
+          alt={sortedImages[selectedImageIndex]?.alt_text || 'Product Image'}
           className={`main-image ${imageLoaded ? 'loaded' : 'loading'}`}
           onLoad={() => setImageLoaded(true)}
           onError={(e) => {
@@ -116,7 +116,7 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
             setImageLoaded(true);
           }}
         />
-        
+
         {/* Image Counter */}
         <div className="image-counter">
           {selectedImageIndex + 1} / {sortedImages.length}
@@ -173,7 +173,7 @@ const ProductImageCarousel: React.FC<ProductImageCarouselProps> = ({
 
       {/* Image Information */}
       <div className="image-info">
-        <p className="image-alt">{sortedImages[selectedImageIndex].alt_text}</p>
+        <p className="image-alt">{sortedImages[selectedImageIndex]?.alt_text}</p>
       </div>
     </div>
   );

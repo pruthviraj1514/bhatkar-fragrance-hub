@@ -25,8 +25,8 @@ class Product {
      */
     static async getStats() {
         try {
-            const [rows] = await db.query(getProductStatsQuery);
-            return rows[0];
+            const result = await db.query(getProductStatsQuery);
+            return result.rows[0];
         } catch (error) {
             logger.error(`❌ Product model getStats error: ${error.message}`);
             throw error;
@@ -54,7 +54,7 @@ class Product {
 
     static async create(newProduct) {
         try {
-            const [rows] = await db.query(createProductQuery,
+            const result = await db.query(createProductQuery,
                 [
                     newProduct.name,
                     newProduct.brand,
@@ -74,9 +74,9 @@ class Product {
                     newProduct.is_active !== undefined ? !!newProduct.is_active : false
                 ]);
 
-            if (!rows || rows.length === 0) throw new Error("Product creation failed");
+            if (!result.rows || result.rows.length === 0) throw new Error("Product creation failed");
 
-            return convertProduct(rows[0]);
+            return convertProduct(result.rows[0]);
         } catch (error) {
             logger.error(`❌ Product Model Create Error: ${error.message}`);
             throw error;
@@ -85,8 +85,8 @@ class Product {
 
     static async getAll() {
         try {
-            const [rows] = await db.query(getAllProductsQuery);
-            return rows.map(convertProduct);
+            const result = await db.query(getAllProductsQuery);
+            return result.rows.map(convertProduct);
         } catch (error) {
             logger.error(`❌ Product Model GetAll Error: ${error.message}`);
             throw error;
@@ -95,9 +95,9 @@ class Product {
 
     static async getById(id) {
         try {
-            const [rows] = await db.query(getProductByIdQuery, [id]);
-            if (rows && rows.length > 0) {
-                return convertProduct(rows[0]);
+            const result = await db.query(getProductByIdQuery, [id]);
+            if (result.rows && result.rows.length > 0) {
+                return convertProduct(result.rows[0]);
             }
             throw { kind: "not_found" };
         } catch (error) {
@@ -108,7 +108,7 @@ class Product {
 
     static async update(id, updatedProduct) {
         try {
-            const [rows] = await db.query(updateProductQuery,
+            const result = await db.query(updateProductQuery,
                 [
                     updatedProduct.name,
                     updatedProduct.brand,
@@ -129,10 +129,10 @@ class Product {
                     id
                 ]);
 
-            if (!rows || rows.length === 0) {
+            if (!result.rows || result.rows.length === 0) {
                 throw { kind: "not_found" };
             }
-            return convertProduct(rows[0]);
+            return convertProduct(result.rows[0]);
         } catch (error) {
             logger.error(`❌ Product Model Update Error: ${error.message}`);
             throw error;
@@ -141,8 +141,7 @@ class Product {
 
     static async delete(id) {
         try {
-            const [rows, result] = await db.query(deleteProductQuery, [id]);
-            // result is the full Result object, rows is the array from RETURNING
+            const result = await db.query(deleteProductQuery, [id]);
             if (result.rowCount === 0) {
                 throw { kind: "not_found" };
             }

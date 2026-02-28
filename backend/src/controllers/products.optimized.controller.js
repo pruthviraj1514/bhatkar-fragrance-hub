@@ -124,14 +124,15 @@ exports.getAllProducts = async (req, res) => {
     const startTime = Date.now();
 
     // Get count
-    const [countResult] = await executeQuery(queries.countActiveProducts);
-    const total = countResult.total;
+    const countResult = await executeQuery(queries.countActiveProducts);
+    const total = countResult.rows[0].total;
 
     // Get products with images
-    const products = await executeQuery(
+    const productsRes = await executeQuery(
       queries.getAllProductsOptimized,
       [limit, offset]
     );
+    const products = productsRes.rows;
 
     // Parse and format response with FAST direct URLs (no signing for list views)
     const formattedProducts = products.map(product => {
@@ -292,10 +293,11 @@ exports.getBestSellers = async (req, res) => {
 
     const startTime = Date.now();
 
-    const products = await executeQuery(
+    const productsRes = await executeQuery(
       queries.getBestSellersOptimized,
       [limit]
     );
+    const products = productsRes.rows;
 
     const formattedProducts = products.map(product => {
       const parsedImages = parseJSON(product.images || '[]');
@@ -371,10 +373,11 @@ exports.getProductsByCategory = async (req, res) => {
 
     const total = countResult.total;
 
-    const products = await executeQuery(
+    const productsRes = await executeQuery(
       queries.getProductsByCategoryOptimized,
       [category, limit, offset]
     );
+    const products = productsRes.rows;
 
     const formattedProducts = products.map(formatProduct);
     const duration = Date.now() - startTime;
@@ -511,7 +514,7 @@ exports.healthCheck = async (req, res) => {
     const startTime = Date.now();
 
     // Test database connection
-    const [result] = await executeQuery('SELECT 1 as health');
+    const result = await executeQuery('SELECT 1 as health');
     const dbTime = Date.now() - startTime;
 
     const stats = {
@@ -566,6 +569,7 @@ function calculateFinalPrice(product) {
 }
 
 function formatProduct(product) {
+  if (!product) return null;
   // Parse images and generate fresh signed URLs
   const parsedImages = parseJSON(product.images || '[]');
   const imagesWithSignedUrls = imageURLService.generateSignedUrlsForImages(parsedImages);

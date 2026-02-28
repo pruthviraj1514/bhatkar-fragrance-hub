@@ -12,7 +12,7 @@ class User {
 
     static async create(newUser) {
         try {
-            const [result] = await db.query(createNewUserQuery,
+            const result = await db.query(createNewUserQuery,
                 [
                     newUser.firstname,
                     newUser.lastname,
@@ -20,7 +20,7 @@ class User {
                     newUser.password
                 ]);
             return {
-                id: result.id,
+                id: result.rows[0].id,
                 firstname: newUser.firstname,
                 lastname: newUser.lastname,
                 email: newUser.email
@@ -33,10 +33,9 @@ class User {
 
     static async findByEmail(email) {
         try {
-            // PostgreSQL: Use [rows] destructuring with unified db.query
-            const [rows] = await db.query(findUserByEmailQuery, [email]);
-            if (rows.length) {
-                return rows[0];
+            const result = await db.query(findUserByEmailQuery, [email]);
+            if (result.rows && result.rows.length) {
+                return result.rows[0];
             }
             throw { kind: "not_found" };
         } catch (error) {

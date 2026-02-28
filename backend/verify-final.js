@@ -13,10 +13,10 @@ async function verify() {
         const stats = {};
 
         // 1. Data Counts
-        const [products] = await db.query('SELECT COUNT(*) as count FROM products');
-        const [orders] = await db.query('SELECT COUNT(*) as count FROM orders');
-        const [users] = await db.query('SELECT COUNT(*) as count FROM users');
-        const [reviews] = await db.query('SELECT COUNT(*) as count FROM reviews');
+        const { rows: products } = await db.query('SELECT COUNT(*) as count FROM products');
+        const { rows: orders } = await db.query('SELECT COUNT(*) as count FROM orders');
+        const { rows: users } = await db.query('SELECT COUNT(*) as count FROM users');
+        const { rows: reviews } = await db.query('SELECT COUNT(*) as count FROM reviews');
 
         stats.products = products[0].count;
         stats.orders = orders[0].count;
@@ -26,7 +26,7 @@ async function verify() {
         console.table(stats);
 
         // 2. Check for inconsistent data structures (null images)
-        const [nullImages] = await db.query(`
+        const { rows: nullImages } = await db.query(`
             SELECT COUNT(*) as count 
             FROM products p 
             WHERE NOT EXISTS (SELECT 1 FROM product_images pi WHERE pi.product_id = p.id)

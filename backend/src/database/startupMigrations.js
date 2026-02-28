@@ -50,7 +50,7 @@ async function runStartupMigrations(db, loggerUtil = logger) {
 async function addIsActiveColumn(db, loggerUtil) {
   try {
     // Ported to PostgreSQL
-    const [columns] = await db.query(`
+    const { rows: columns } = await db.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'products' 
@@ -82,7 +82,7 @@ async function addIsActiveColumn(db, loggerUtil) {
  */
 async function addIsBestSellerColumn(db, loggerUtil) {
   try {
-    const [columns] = await db.query(`
+    const { rows: columns } = await db.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'products' 
@@ -113,7 +113,7 @@ async function addIsBestSellerColumn(db, loggerUtil) {
  */
 async function addImageFormatColumn(db, loggerUtil) {
   try {
-    const [columns] = await db.query(`
+    const { rows: columns } = await db.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'product_images' 
@@ -144,7 +144,7 @@ async function addImageFormatColumn(db, loggerUtil) {
  */
 async function addIsThumbnailColumn(db, loggerUtil) {
   try {
-    const [columns] = await db.query(`
+    const { rows: columns } = await db.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'product_images' 
@@ -214,7 +214,7 @@ async function createIndexes(db, loggerUtil) {
 async function createIndexIfNotExists(db, loggerUtil, indexName, tableName, columns) {
   try {
     // Ported to PostgreSQL
-    const [indexes] = await db.query(`
+    const { rows: indexes } = await db.query(`
       SELECT indexname 
       FROM pg_indexes 
       WHERE tablename = $1 
