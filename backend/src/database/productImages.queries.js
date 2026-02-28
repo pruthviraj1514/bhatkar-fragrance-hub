@@ -37,6 +37,8 @@ ORDER BY image_order ASC
 const getProductWithImages = `
 SELECT 
   p.*,
+  COALESCE((SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as avg_rating,
+  COALESCE((SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as total_reviews,
   (
     SELECT COALESCE(json_agg(pi_sub), '[]'::json)
     FROM (
@@ -53,6 +55,8 @@ WHERE p.id = $1
 const getAllProductsWithImages = `
 SELECT 
   p.*,
+  COALESCE((SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as avg_rating,
+  COALESCE((SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = true), 0) as total_reviews,
   (
     SELECT COALESCE(json_agg(pi_sub), '[]'::json)
     FROM (

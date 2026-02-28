@@ -57,17 +57,21 @@ exports.createReview = asyncHandler(async (req, res) => {
     const productIdFromUrl = req.params.productId;
     const { product_id, productId, reviewer_name, rating, review_text, verified_purchase, is_approved, is_active } = req.body;
 
-    // Support both URL params and body
-    const productId_ = productIdFromUrl || product_id || productId;
+    // Strict type parsing
+    const pid = Number(productId_);
+    const rtg = Number(rating);
 
-    if (!productId_ || !reviewer_name || !rating || !review_text) {
+    // DEBUG LOGS
+    console.log(`[Review Debug] Types: pid=${typeof pid}(${pid}), rating=${typeof rtg}(${rtg}), reviewer=${reviewer_name}`);
+
+    if (isNaN(pid) || isNaN(rtg)) {
         return res.status(400).send({
             status: 'error',
-            message: 'Product ID, reviewer name, rating, and review text are required'
+            message: 'Product ID and Rating must be valid numbers'
         });
     }
 
-    if (rating < 1 || rating > 5) {
+    if (rtg < 1 || rtg > 5) {
         return res.status(400).send({
             status: 'error',
             message: 'Rating must be between 1 and 5'
@@ -75,13 +79,13 @@ exports.createReview = asyncHandler(async (req, res) => {
     }
 
     const reviewData = {
-        product_id: productId_,
-        reviewer_name,
-        rating,
-        review_text,
-        verified_purchase: verified_purchase !== undefined ? verified_purchase : false,
-        is_approved: is_approved !== undefined ? is_approved : true,
-        is_active: is_active !== undefined ? is_active : true
+        product_id: pid,
+        reviewer_name: String(reviewer_name),
+        rating: rtg,
+        review_text: String(review_text),
+        verified_purchase: verified_purchase === true || verified_purchase === 'true' || verified_purchase === 1,
+        is_approved: is_approved !== undefined ? (is_approved === true || is_approved === 'true' || is_approved === 1) : true,
+        is_active: is_active !== undefined ? (is_active === true || is_active === 'true' || is_active === 1) : true
     };
 
     const review = await reviewsQueries.createReview(reviewData);
@@ -165,13 +169,18 @@ exports.updateReview = asyncHandler(async (req, res) => {
     const existing = await reviewsQueries.getReviewById(reviewId);
     if (!existing) return res.status(404).send({ status: 'error', message: 'Review not found' });
 
+    const pid = Number(reviewId);
+    const rtg = rating !== undefined ? Number(rating) : undefined;
+
+    if (isNaN(pid)) return res.status(400).send({ status: 'error', message: 'Invalid Review ID' });
+
     const query = `UPDATE reviews SET reviewer_name = $1, rating = $2, review_text = $3, verified_purchase = $4 WHERE id = $5`;
     await require('../config/db').query(query, [
         reviewer_name || existing.reviewer_name,
-        rating !== undefined ? rating : existing.rating,
+        rtg !== undefined && !isNaN(rtg) ? rtg : existing.rating,
         review_text || existing.review_text,
-        verified_purchase !== undefined ? (verified_purchase ? 1 : 0) : existing.verified_purchase,
-        reviewId
+        verified_purchase !== undefined ? (verified_purchase === true || verified_purchase === 'true' || verified_purchase === 1) : existing.verified_purchase,
+        pid
     ]);
 
     const updated = await reviewsQueries.getReviewById(reviewId);
