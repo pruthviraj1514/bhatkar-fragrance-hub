@@ -44,6 +44,12 @@ class ProductImage {
     try {
       const imageFormat = newImage.imageFormat || ProductImage.extractImageFormat(newImage.imageUrl);
 
+      // Validation: Reject legacy Railway URLs
+      if (newImage.imageUrl && newImage.imageUrl.includes('storageapi.dev')) {
+        logger.error(`Rejected legacy Railway URL in model: ${newImage.imageUrl}`);
+        throw new Error('Railway Storage URLs are no longer supported. Please use Supabase Storage.');
+      }
+
       // db.query wrapper returns [resultObj, fields] for INSERTS
       // resultObj contains the inserted row (due to RETURNING *) and resultObj.insertId
       const result = await db.query(createProductImageQuery, [
@@ -190,6 +196,12 @@ class ProductImage {
   static async updateImage(imageId, productId, updates) {
     try {
       const imageFormat = updates.imageFormat || ProductImage.extractImageFormat(updates.imageUrl);
+
+      // Validation: Reject legacy Railway URLs
+      if (updates.imageUrl && updates.imageUrl.includes('storageapi.dev')) {
+        logger.error(`Rejected legacy Railway URL in model update: ${updates.imageUrl}`);
+        throw new Error('Railway Storage URLs are no longer supported. Please use Supabase Storage.');
+      }
 
       const result = await db.query(updateProductImageQuery, [
         updates.imageUrl,

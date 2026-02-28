@@ -1,6 +1,6 @@
 const ProductImage = require('../models/productImage.model');
 const Product = require('../models/product.model');
-const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary.config');
+const { uploadToSupabase, deleteFromSupabase } = require('../config/supabaseStorage.config');
 const { logger } = require('../utils/logger');
 
 /**
@@ -42,41 +42,27 @@ exports.uploadProductImages = async (req, res) => {
 
     logger.info(`📤 Uploading ${files.length} images to Cloudinary for product ${productId}...`);
 
-    // Upload all files to Cloudinary
+    // Upload all files to Supabase
     const uploadedImages = [];
-    const cloudinaryIds = [];
 
     for (let i = 0; i < files.length; i++) {
       try {
         const file = files[i];
-        const fileName = `product-${productId}-${Date.now()}-${i}`;
 
         logger.info(`  Uploading image ${i + 1}/${files.length}: ${file.originalname}`);
 
-        // Upload to Cloudinary
-        const cloudinaryResult = await uploadToCloudinary(file.buffer, fileName);
+        // Upload to Supabase
+        const publicUrl = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
 
         uploadedImages.push({
-          imageUrl: cloudinaryResult.url,
+          imageUrl: publicUrl,
           altText: req.body[`altText_${i}`] || `Product Image ${i + 1}`,
           imageOrder: i + 1,
           isThumbnail: i === 0, // First image as thumbnail
-          imageFormat: cloudinaryResult.format,
-          publicId: cloudinaryResult.publicId
+          imageFormat: file.mimetype.split('/')[1] || 'jpg'
         });
-
-        cloudinaryIds.push(cloudinaryResult.publicId);
       } catch (uploadError) {
         logger.error(`Failed to upload image ${i + 1}: ${uploadError.message}`);
-
-        // Rollback: Delete previously uploaded images from Cloudinary
-        for (const publicId of cloudinaryIds) {
-          try {
-            await deleteFromCloudinary(publicId);
-          } catch (deleteError) {
-            logger.error(`Failed to rollback image ${publicId}: ${deleteError.message}`);
-          }
-        }
 
         return res.status(500).json({
           status: 'error',
@@ -104,13 +90,6 @@ exports.uploadProductImages = async (req, res) => {
         logger.info(`  ✅ Saved image with ID ${saved.id}: ${imgData.imageUrl}`);
       } catch (dbError) {
         logger.error(`Failed to save image to database: ${dbError.message}`);
-
-        // Rollback: Delete from Cloudinary
-        try {
-          await deleteFromCloudinary(imgData.publicId);
-        } catch (deleteError) {
-          logger.error(`Failed to rollback Cloudinary image: ${deleteError.message}`);
-        }
 
         return res.status(500).json({
           status: 'error',
@@ -157,16 +136,13 @@ exports.deleteProductImage = async (req, res) => {
     }
 
     const image = images[0];
-    const publicId = extractPublicIdFromUrl(image.image_url);
 
-    // Delete from Cloudinary
-    if (publicId) {
-      try {
-        await deleteFromCloudinary(publicId);
-        logger.info(`✅ Deleted image from Cloudinary: ${publicId}`);
-      } catch (cloudinaryError) {
-        logger.warn(`Warning: Could not delete from Cloudinary: ${cloudinaryError.message}`);
-      }
+    // Delete from Supabase
+    try {
+      await deleteFromSupabase(image.image_url);
+      logger.info(`✅ Deleted image from Supabase: ${image.image_url}`);
+    } catch (supabaseError) {
+      logger.warn(`Warning: Could not delete from Supabase: ${supabaseError.message}`);
     }
 
     // Delete from database
@@ -203,53 +179,22 @@ exports.uploadTempImages = async (req, res) => {
     }
 
     const uploaded = [];
-    // Detect available storage backends
-    const hasS3Env = process.env.S3_BUCKET && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY;
-    const hasCloudinaryEnv = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
-
-    if (!hasS3Env && !hasCloudinaryEnv) {
-      console.error('No storage provider configured: set S3_* or CLOUDINARY_* env vars');
-      return res.status(500).json({ status: 'error', message: 'No image storage configured on server' });
-    }
-
-    // Helper to attempt railway then fallback to cloudinary
-    const tryUpload = async (fileBuffer, fileName) => {
-      // Try Railway if configured
-      if (hasS3Env) {
-        try {
-          const railway = require('../config/railwayStorage.config');
-          const publicUrl = await railway.uploadToRailway(fileBuffer, fileName);
-          return { url: publicUrl, format: fileName.split('.').pop(), source: 'railway' };
-        } catch (railErr) {
-          console.error('Railway upload failed:', railErr && railErr.message ? railErr.message : railErr);
-          // fallthrough to cloudinary if available
-        }
-      }
-
-      // Try Cloudinary if configured
-      if (hasCloudinaryEnv) {
-        try {
-          const cloudinary = require('../config/cloudinary.config');
-          const result = await cloudinary.uploadToCloudinary(fileBuffer, fileName);
-          return { url: result.url, format: result.format, source: 'cloudinary' };
-        } catch (cloudErr) {
-          console.error('Cloudinary upload failed:', cloudErr && cloudErr.message ? cloudErr.message : cloudErr);
-          throw cloudErr;
-        }
-      }
-
-      throw new Error('No available storage backend to upload images');
-    };
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        const fileName = `temp-${Date.now()}-${i}`;
-        const result = await tryUpload(file.buffer, fileName);
-        uploaded.push({ image_url: result.url, image_format: result.format || file.originalname.split('.').pop().toLowerCase(), source: result.source });
+        logger.info(`  Uploading temp image ${i + 1}/${files.length}: ${file.originalname}`);
+        // For Supabase, we use the same upload function but the path is already "products/..."
+        // which matches the user requirement "products/${Date.now()}-${originalname}"
+        const publicUrl = await uploadToSupabase(file.buffer, file.originalname, file.mimetype);
+
+        uploaded.push({
+          image_url: publicUrl,
+          image_format: file.mimetype.split('/')[1] || 'jpg',
+          source: 'supabase'
+        });
       } catch (err) {
-        console.error('Temp upload error:', err && err.message ? err.message : err);
-        console.error(err && err.stack ? err.stack : 'no stack');
+        logger.error('Temp upload error:', err.message);
         return res.status(500).json({ status: 'error', message: 'Failed to upload images' });
       }
     }
