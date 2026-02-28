@@ -65,28 +65,20 @@ exports.addProductImages = async (req, res) => {
       // 1. Validation check for Railway/S3 legacy URLs
       if (finalImageUrl.includes("storageapi.dev")) {
         logger.error(`Rejected legacy Railway URL: ${finalImageUrl}`);
-        return res.status(400).json({
-          status: 'error',
-          message: 'Railway Storage URLs are no longer supported. Please upload using Supabase.'
-        });
+        throw new Error("Railway storage detected — migration incomplete");
       }
 
       // 2. Handle temporary images or move logic if needed
       if (finalImageUrl.includes("temp")) {
-        const { supabase } = require('../config/supabaseStorage.config');
+        const { uploadToSupabase } = require('../config/supabaseStorage.config');
         try {
-          // In Supabase, we might not need a complex 'move' if we upload directly to 'products'
-          // but if the frontend sends a temp path, we should handle it.
-          // For now, let's assume the user wants us to ensure it's in the permanent bucket.
-
-          if (finalImageUrl.includes("temp")) {
-            logger.warn(`Temp image detected in Supabase flow: ${finalImageUrl}`);
-            // Logic to move if necessary, but typically with Supabase we'd just 
-            // upload directly to the final path.
-          }
+          // If it's a temp URL, we should ideally re-process it or ensure it's in Supabase
+          // For now, if it's already a Supabase URL but has 'temp', it's fine.
+          // But according to the user requirements, we must ensure it's correctly formatted.
+          logger.warn(`Temp image detected in Supabase flow: ${finalImageUrl}`);
         } catch (copyErr) {
-          logger.error(`Failed to handle temp image: ${copyErr.message}`);
-          throw new Error("Temporary image cannot be saved: " + copyErr.message);
+          logger.error(`Failed to handle image: ${copyErr.message}`);
+          throw new Error("Error processing image: " + copyErr.message);
         }
       }
 

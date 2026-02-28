@@ -18,24 +18,37 @@ const supabase = createClient(
  */
 async function uploadToSupabase(fileBuffer, fileName, mimeType) {
     const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'products';
-    const filePath = `products/${Date.now()}-${fileName}`;
+    // Corrected: Remove folder prefix as bucket is already "products"
+    const filePath = `${Date.now()}-${fileName}`;
 
-    const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, fileBuffer, {
-            contentType: mimeType,
-            upsert: false
-        });
+    try {
+        const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, fileBuffer, {
+                contentType: mimeType,
+                upsert: false
+            });
 
-    if (error) {
-        throw new Error(`Supabase upload error: ${error.message}`);
+        if (error) {
+            console.error("SUPABASE UPLOAD ERROR Details:", {
+                message: error.message,
+                statusCode: error.statusCode,
+                error: error.error,
+                bucket,
+                filePath
+            });
+            throw new Error(`Supabase upload error: ${error.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+        return publicUrlData.publicUrl;
+    } catch (err) {
+        console.error("SUPABASE UPLOAD EXCEPTION:", err);
+        throw err;
     }
-
-    const { data: publicUrlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
-    return publicUrlData.publicUrl;
 }
 
 /**
@@ -44,19 +57,27 @@ async function uploadToSupabase(fileBuffer, fileName, mimeType) {
  */
 async function deleteFromSupabase(fileUrl) {
     const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'products';
-    // Extract path from public URL
-    // Format: https://.../storage/v1/object/public/products/products/123-image.jpg
-    const pathParts = fileUrl.split(`${bucket}/`);
-    if (pathParts.length < 2) return;
 
-    const filePath = pathParts[pathParts.length - 1];
+    try {
+        // Extract path from public URL
+        const urlParts = fileUrl.split(`${bucket}/`);
+        if (urlParts.length < 2) return;
 
-    const { error } = await supabase.storage
-        .from(bucket)
-        .remove([filePath]);
+        const filePath = urlParts[urlParts.length - 1];
 
-    if (error) {
-        console.error(`Supabase delete error: ${error.message}`);
+        const { error } = await supabase.storage
+            .from(bucket)
+            .remove([filePath]);
+
+        if (error) {
+            console.error("SUPABASE DELETE ERROR:", {
+                message: error.message,
+                fileUrl,
+                filePath
+            });
+        }
+    } catch (err) {
+        console.error("SUPABASE DELETE EXCEPTION:", err);
     }
 }
 

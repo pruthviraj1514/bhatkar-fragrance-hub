@@ -194,8 +194,12 @@ exports.uploadTempImages = async (req, res) => {
           source: 'supabase'
         });
       } catch (err) {
-        logger.error('Temp upload error:', err.message);
-        return res.status(500).json({ status: 'error', message: 'Failed to upload images' });
+        console.error("SUPABASE UPLOAD ERROR:", err);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to upload images',
+          error: err.message
+        });
       }
     }
 
