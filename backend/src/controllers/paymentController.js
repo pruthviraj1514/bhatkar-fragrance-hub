@@ -23,6 +23,7 @@ exports.createOrder = async (req, res) => {
     // Require userId from authenticated middleware (auth)
     // Guest checkout is no longer allowed due to strict PostgreSQL foreign key constraints
     const userId = req.user?.id;
+    console.log(`👤 Auth Check - User from token: ${userId || 'MISSING'}`);
 
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Unauthorized: You must be logged in to create an order' });

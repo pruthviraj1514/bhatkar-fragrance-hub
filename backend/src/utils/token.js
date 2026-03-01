@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET_KEY } = require('../utils/secrets');
 const { logger } = require('./logger');
 
-const generate = (id, email) => jwt.sign({ id, email }, JWT_SECRET_KEY, { expiresIn: '1d' });
+const generate = (id, email) => jwt.sign({ id, email }, JWT_SECRET_KEY, { expiresIn: '7d' });
 
 const decode = (token) => {
     try {

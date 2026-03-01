@@ -113,7 +113,11 @@ api.interceptors.response.use(
 
         // Force redirect to login page (avoid infinity loop if already on login)
         if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/auth')) {
-          window.location.href = '/login?expired=true';
+          // Add a small delay for user to notice the console error if debugging
+          setTimeout(() => {
+            window.location.href = '/login?expired=true';
+          }, 100);
+          return new Promise(() => { }); // Stop the promise chain
         }
       }
 

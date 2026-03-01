@@ -18,7 +18,7 @@ const auth = async (req, res, next) => {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({
                 success: false,
-                error: 'Authentication failed: No token provided'
+                message: 'Session expired. Please login again'
             });
         }
 
@@ -28,16 +28,14 @@ const auth = async (req, res, next) => {
         if (decoded && decoded.error) {
             return res.status(401).json({
                 success: false,
-                message: 'Session expired. Please login again.',
-                error: decoded.error.message
+                message: 'Session expired. Please login again'
             });
         }
 
         if (!decoded || !decoded.id || !decoded.email) {
             return res.status(401).json({
                 success: false,
-                message: 'Session expired. Please login again.',
-                error: 'Invalid or expired token'
+                message: 'Session expired. Please login again'
             });
         }
 
@@ -79,7 +77,7 @@ const auth = async (req, res, next) => {
         if (!localUserId) {
             return res.status(401).json({
                 success: false,
-                error: 'Authentication failed: User account missing'
+                message: 'Session expired. Please login again'
             });
         }
 
@@ -95,7 +93,7 @@ const auth = async (req, res, next) => {
         logger.error('❌ Error in auth middleware:', error.message);
         return res.status(401).json({
             success: false,
-            error: 'Authentication failed: ' + error.message
+            message: 'Session expired. Please login again'
         });
     }
 };
