@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Lock, Truck, Gift } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,25 +15,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import CheckoutPayment from "@/components/CheckoutPayment";
 
 export default function Checkout() {
   const { state, totalPrice } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get data from navigation state if available
+  const stateData = location.state || {};
 
   const [loading, setLoading] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "IN",
+    email: stateData.email || user?.email || "",
+    firstName: stateData.firstName || user?.firstname || "",
+    lastName: stateData.lastName || user?.lastname || "",
+    phone: stateData.phone || "",
+    address: stateData.address || "",
+    city: stateData.city || "",
+    state: stateData.state || "",
+    zipCode: stateData.zipCode || "",
+    country: stateData.country || "IN",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,7 +326,7 @@ export default function Checkout() {
                       </div>
                       <CheckoutPayment
                         items={state.items.map(item => ({
-                          productId: item.product.id,
+                          productId: Number(item.product.id),
                           quantity: item.quantity,
                           price: item.selectedPrice
                         }))}

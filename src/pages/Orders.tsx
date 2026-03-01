@@ -188,7 +188,7 @@ export default function Orders() {
                     {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border/50">
                       <Button variant="outline" className="gap-2" asChild>
-                        <Link to={`/checkout?orderId=${order.id}`}>
+                        <Link to="/checkout" state={{ orderId: order.id }}>
                           <Eye className="h-4 w-4" />
                           View Details
                         </Link>
