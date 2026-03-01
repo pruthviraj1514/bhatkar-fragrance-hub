@@ -19,6 +19,7 @@ import Checkout from "./pages/Checkout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminManage from "./pages/admin/Manage";
 import AdminReviews from "./pages/admin/Reviews";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
                 {/* Protected Admin Routes */}
                 <Route
                   path="/admin/dashboard"

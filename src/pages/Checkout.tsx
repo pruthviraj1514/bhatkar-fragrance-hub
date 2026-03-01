@@ -95,10 +95,10 @@ export default function Checkout() {
       })
     );
 
-    // Redirect to orders page
+    // Redirect to success page
     setTimeout(() => {
-      navigate("/orders");
-    }, 2000);
+      navigate("/payment-success");
+    }, 1500);
   };
 
   const handlePaymentError = (error: any) => {

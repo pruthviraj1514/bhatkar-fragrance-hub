@@ -115,6 +115,25 @@ app.use("/api/images", imageRoute);
 app.use("/api/payment", paymentRoute);
 
 // ========================================================================
+// SERVE FRONTEND (SPA FALLBACK)
+// ========================================================================
+
+// Serve static files from the React app build directory
+// Correct path assuming backend/src/app.js and frontend is in root/dist
+const distPath = path.join(__dirname, "../../dist");
+app.use(express.static(distPath));
+
+// Catch-all route to serve index.html for any non-API routes
+// This MUST be the last route
+app.get("*", (req, res, next) => {
+  // If it's an API route that reached here, let it go to 404 handler
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+// ========================================================================
 // ERROR HANDLING
 // ========================================================================
 
