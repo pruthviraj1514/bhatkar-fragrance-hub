@@ -55,25 +55,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedAdminToken = localStorage.getItem("adminToken");
-    const storedRole = localStorage.getItem("role") as UserRole | null;
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem("token");
+      const storedAdminToken = localStorage.getItem("adminToken");
+      const storedRole = localStorage.getItem("role") as UserRole | null;
 
-    if (storedAdminToken) {
-      setToken(storedAdminToken);
-      setRole("admin");
-      const storedAdmin = localStorage.getItem("admin");
-      if (storedAdmin) {
-        setAdmin(JSON.parse(storedAdmin));
+      if (storedAdminToken) {
+        setToken(storedAdminToken);
+        setRole("admin");
+        const storedAdmin = localStorage.getItem("admin");
+        if (storedAdmin) {
+          setAdmin(JSON.parse(storedAdmin));
+        }
+      } else if (storedToken) {
+        setToken(storedToken);
+        setRole("customer");
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+
+        // Silently verify and refresh user data from server
+        try {
+          const res = await api.get("/auth/me");
+          if (res.data?.data) {
+            setUser(res.data.data);
+            localStorage.setItem("user", JSON.stringify(res.data.data));
+          }
+        } catch (error) {
+          // If the token is truly invalid, the global axios interceptor 
+          // will catch the 401 and automatically log the user out.
+          console.warn("Failed to refresh user profile on startup");
+        }
       }
-    } else if (storedToken) {
-      setToken(storedToken);
-      setRole("customer");
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   // Clear error function
@@ -95,16 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("token", token);
       localStorage.setItem("role", "customer");
       localStorage.setItem("user", JSON.stringify(userData));
-      
+
       setToken(token);
       setUser(userData);
       setRole("customer");
       setAdmin(null);
     } catch (err: any) {
       // Handle specific error messages
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          "Login failed. Please check your credentials.";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Login failed. Please check your credentials.";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -124,16 +141,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("adminToken", token);
       localStorage.setItem("role", "admin");
       localStorage.setItem("admin", JSON.stringify(adminData));
-      
+
       setToken(token);
       setAdmin(adminData);
       setRole("admin");
       setUser(null);
     } catch (err: any) {
       // Handle specific error messages
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          "Admin login failed. Please check your credentials.";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Admin login failed. Please check your credentials.";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -153,15 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("token", token);
       localStorage.setItem("role", "customer");
       localStorage.setItem("user", JSON.stringify(userData));
-      
+
       setToken(token);
       setUser(userData);
       setRole("customer");
       setAdmin(null);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          "Signup failed. Please try again.";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Signup failed. Please try again.";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -176,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     localStorage.removeItem("admin");
-    
+
     setUser(null);
     setAdmin(null);
     setToken(null);
@@ -186,18 +203,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ 
-        user, 
-        admin, 
-        token, 
-        isAuthenticated, 
-        role, 
+      value={{
+        user,
+        admin,
+        token,
+        isAuthenticated,
+        role,
         isAdmin,
         isLoading,
         error,
-        login, 
-        adminLogin, 
-        signup, 
+        login,
+        adminLogin,
+        signup,
         logout,
         clearError
       }}

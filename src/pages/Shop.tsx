@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Filter, SlidersHorizontal, X, Search, RefreshCw } from "lucide-react";
@@ -23,29 +23,9 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
-import api from "@/lib/axios";
-import { normalizeProductImages } from "@/lib/imageUtils";
 import { toast } from "sonner";
-
-interface DatabaseProduct {
-  id: number;
-  name: string;
-  brand: string;
-  price: number;
-  category: string;
-  concentration: string;
-  description: string;
-  stock: number;
-  images: Array<{
-    id: number;
-    image_url: string;
-    alt_text: string;
-    image_order: number;
-    is_thumbnail: boolean;
-  }>;
-}
+import { useProducts } from "@/contexts/ProductContext";
 
 const categories = [
   { value: "men", label: "Men" },
@@ -81,6 +61,8 @@ export default function Shop() {
   const [searchParams] = useSearchParams();
   const collectionParam = searchParams.get("collection");
 
+  const { products, loading: productsLoading, refreshProducts } = useProducts();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -88,124 +70,25 @@ export default function Shop() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 6000]);
   const [sortBy, setSortBy] = useState("popularity");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [dbProducts, setDbProducts] = useState<DatabaseProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const prevProductCountRef = useRef(0);
-  const isMountedRef = useRef(true);
-  const hasFetchedRef = useRef(false);
 
   // Manual refresh function
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const response = await api.get('/products/with-images/all');
-      const newProducts = response.data.data || [];
-      setDbProducts(newProducts);
-      prevProductCountRef.current = newProducts.length;
-      console.log(`🔄 Manually refreshed: ${newProducts.length} products loaded`);
-      toast.success(`Refreshed! Showing ${newProducts.length} products`);
+      await refreshProducts();
+      toast.success("Products refreshed successfully");
     } catch (error: any) {
-      console.error('Failed to refresh products:', error);
-      toast.error('Failed to refresh products');
+      toast.error("Failed to refresh products");
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Fetch products from database with images
-  useEffect(() => {
-    const fetchProducts = async () => {
-      // Mark as fetched immediately to avoid duplicate requests in the same mount
-      if (hasFetchedRef.current) {
-        console.debug('Fetch skipped: already fetched during this mount cycle');
-        return;
-      }
-      hasFetchedRef.current = true;
-      try {
-        console.log('🔄 Fetching from API: /products/with-images/all');
-        const response = await api.get('/products/with-images/all');
-        console.log('✅ API returned status:', response.status);
-
-        const rawProducts = response.data.data || [];
-
-        // Normalize products: Ensure images is always an array and price is a number
-        const newProducts = rawProducts.map((p: any) => {
-          // Normalizer handles basic formatting
-          const normalized = normalizeProductImages(p);
-
-          if (!normalized.images || !Array.isArray(normalized.images)) {
-            normalized.images = [];
-          }
-
-          // **CRITICAL FIX**: If this product matches one of our local static products,
-          // inject the beautiful local asset image as the primary image, to prevent Supabase
-          // timeouts from ruining the display of known catalogue items.
-          const matchingStatic = products.find(sp =>
-            sp.name && p.name && sp.name.toLowerCase().trim() === p.name.toLowerCase().trim()
-          );
-
-          if (matchingStatic && matchingStatic.images && matchingStatic.images.length > 0) {
-            // Overwrite the DB images with the local static asset image
-            normalized.images = matchingStatic.images;
-            if (normalized.image_url !== undefined) {
-              normalized.image_url = matchingStatic.images[0];
-            }
-          }
-
-          return normalized;
-        });
-
-        console.log('📦 Loaded', newProducts.length, 'products from database');
-        if (newProducts.length > 0) {
-          console.log('Sample product:', {
-            id: newProducts[0].id,
-            name: newProducts[0].name,
-            imageCount: newProducts[0].images?.length
-          });
-        }
-
-        const prevCount = prevProductCountRef.current;
-
-        if (newProducts.length !== prevCount) {
-          if (prevCount === 0) {
-            console.log('📝 Initial load:', newProducts.length, 'products');
-          } else {
-            const diff = newProducts.length - prevCount;
-            console.log(`✅ New products! +${diff} (now ${newProducts.length} total)`);
-            toast.success(`New products added! Showing ${newProducts.length} total.`);
-          }
-          prevProductCountRef.current = newProducts.length;
-        }
-
-        console.log('🔄 Setting dbProducts state');
-        setDbProducts(newProducts);
-        setLoading(false);
-      } catch (error: any) {
-        console.error('❌ Fetch failed:', error.message, error);
-        if (isMountedRef.current) setLoading(false);
-        toast.error('Failed to load products from database');
-      }
-    };
-
-    // Fetch immediately on mount
-    // Note: Polling removed - using backend cache for better performance
-    // Users can manually refresh using the refresh button
-
-    // Cleanup on unmount
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []); // Empty dependency array - effect runs once on mount
-
   const filteredProducts = useMemo(() => {
-    // Combine database products with static products (preventing duplicates by name)
-    const dbNames = new Set((dbProducts || []).map(p => p.name?.toLowerCase()));
-    const uniqueStaticProducts = products.filter(p => !dbNames.has(p.name?.toLowerCase()));
-
-    let sourceProducts = [...(dbProducts || []), ...uniqueStaticProducts];
-
-    let result = [...sourceProducts];
+    // Rely exclusively on global context products
+    let result = [...products];
 
     // Search filter
     if (searchQuery) {
@@ -214,7 +97,7 @@ export default function Shop() {
         (p) =>
           p.name?.toLowerCase().includes(query) ||
           p.description?.toLowerCase().includes(query) ||
-          (p as any).brand?.toLowerCase().includes(query)
+          p.brand?.toLowerCase().includes(query)
       );
     }
 
@@ -255,7 +138,7 @@ export default function Shop() {
     priceRange,
     sortBy,
     collectionParam,
-    dbProducts
+    products
   ]);
 
   const clearFilters = () => {
@@ -496,9 +379,9 @@ export default function Shop() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
-                  {dbProducts.length > 0 && ` (${dbProducts.length} total)`}
+                  {products.length > 0 && ` (${products.length} total)`}
                 </span>
-                {loading && (
+                {productsLoading && (
                   <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
                 )}
               </div>
@@ -533,7 +416,7 @@ export default function Shop() {
                   {filteredProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
-                      product={product}
+                      product={product as any}
                       index={index}
                     />
                   ))}

@@ -22,7 +22,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { products } from "@/data/products";
+import { useProducts } from "@/contexts/ProductContext";
 
 interface ProductImage {
   id: number;
@@ -60,9 +60,9 @@ interface Product {
   concentration: string;
   description: string;
   stock: number;
-  images: ProductImage[];
+  images: any[];
   is_best_seller?: boolean;
-  variants?: ProductVariant[];
+  variants?: any[];
   created_on: string;
 }
 
@@ -70,8 +70,12 @@ export default function ProductDetailWithImages() {
   const { id } = useParams<{ id: string }>();
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { products } = useProducts();
+
+  // Find product from global cache
+  const product = products.find((p: any) => p.id == id); // Loose equality in case of string/number mismatch
+
+  const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [featuredReviews, setFeaturedReviews] = useState<FeaturedReview[]>([]);
@@ -81,67 +85,63 @@ export default function ProductDetailWithImages() {
   const [currentImages, setCurrentImages] = useState<ProductImage[]>([]);
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    if (!product || !product.id) return;
+
+    let mounted = true;
+
+    const fetchDetails = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/products/${id}/with-images`);
-        const dbProduct = response.data.data;
 
-        // **CRITICAL FIX**: Inject local asset images to prevent Supabase timeouts for known products
-        const matchingStatic = products.find(sp =>
-          sp.name && dbProduct.name && sp.name.toLowerCase().trim() === dbProduct.name.toLowerCase().trim()
-        );
+        // Map string array to ProductImage objects
+        const formattedImages = (product.images || []).map((imgUrl: any, idx: number) => {
+          if (typeof imgUrl === 'string') {
+            return {
+              id: -idx,
+              image_url: imgUrl,
+              alt_text: product.name,
+              image_order: idx,
+              is_thumbnail: idx === 0
+            };
+          }
+          return imgUrl;
+        });
 
-        let initialImages = dbProduct.images || [];
-
-        if (matchingStatic && matchingStatic.images && matchingStatic.images.length > 0) {
-          // Convert the string array to the ProductImage interface format
-          initialImages = matchingStatic.images.map((imgUrl, idx) => ({
-            id: -idx, // Temporary negative ID to satisfy type
-            image_url: imgUrl,
-            alt_text: matchingStatic.name,
-            image_order: idx,
-            is_thumbnail: idx === 0
-          }));
-          dbProduct.images = initialImages;
-        }
-
-        setProduct(dbProduct);
-        setCurrentPrice(dbProduct.price);
-        setCurrentStock(dbProduct.stock);
-        setCurrentImages(initialImages);
+        setCurrentImages(formattedImages);
 
         // Fetch featured reviews
         try {
-          const reviewsResponse = await api.get(`/reviews/product/${id}/featured`);
-          setFeaturedReviews(reviewsResponse.data.data || []);
+          const reviewsResponse = await api.get(`/reviews/product/${product.id}/featured`);
+          if (mounted) setFeaturedReviews(reviewsResponse.data.data || []);
         } catch (err) {
           console.log("No reviews available for this product");
         }
 
         // Load variants if available
         try {
-          const variantsResponse = await api.get(`/variants/product/${id}`);
-          const variants = variantsResponse.data.data || [];
-          if (variants.length > 0) {
-            setSelectedVariant(variants[0]);
-            setCurrentPrice(variants[0].price);
-            setCurrentStock(variants[0].stock);
+          const variantsResponse = await api.get(`/variants/product/${product.id}`);
+          const variantsList = variantsResponse.data.data || [];
+          if (mounted && variantsList.length > 0) {
+            setSelectedVariant(variantsList[0]);
+            setCurrentPrice(variantsList[0].price);
+            setCurrentStock(variantsList[0].stock);
           }
         } catch (err) {
           console.log("No variants available for this product");
         }
       } catch (error: any) {
-        toast.error(error.response?.data?.message || "Failed to load product");
+        if (mounted) toast.error(error.response?.data?.message || "Failed to load product details");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    if (id) {
-      fetchProduct();
-    }
-  }, [id]);
+    fetchDetails();
+
+    return () => {
+      mounted = false;
+    };
+  }, [product?.id]);
 
   if (loading) {
     return (
@@ -184,6 +184,7 @@ export default function ProductDetailWithImages() {
       return;
     }
 
+    // Add to cart with selected quantity
     addItem(product as any, quantity, currentPrice);
     toast.success(`${product.name} added to cart!`, {
       description: `Quantity: ${quantity}`,
@@ -201,7 +202,19 @@ export default function ProductDetailWithImages() {
     if (variant.images && variant.images.length > 0) {
       setCurrentImages(variant.images);
     } else if (product?.images) {
-      setCurrentImages(product.images);
+      const formattedImages = (product.images || []).map((imgUrl: any, idx: number) => {
+        if (typeof imgUrl === 'string') {
+          return {
+            id: -idx,
+            image_url: imgUrl,
+            alt_text: product.name,
+            image_order: idx,
+            is_thumbnail: idx === 0
+          };
+        }
+        return imgUrl;
+      });
+      setCurrentImages(formattedImages);
     }
   };
 
@@ -269,9 +282,11 @@ export default function ProductDetailWithImages() {
                   <Badge className="bg-blue-100 text-blue-900">
                     {product.category}
                   </Badge>
-                  <Badge className="bg-purple-100 text-purple-900">
-                    {product.concentration}
-                  </Badge>
+                  {product.concentration && (
+                    <Badge className="bg-purple-100 text-purple-900">
+                      {product.concentration}
+                    </Badge>
+                  )}
                   {currentStock > 0 && (
                     <Badge className="bg-green-100 text-green-900">
                       In Stock
@@ -281,14 +296,14 @@ export default function ProductDetailWithImages() {
               </div>
 
               {/* ML/Variants Selector */}
-              {product.variants && product.variants.length > 0 && (
+              {(product as any).variants && (product as any).variants.length > 0 && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
                     Size: {selectedVariant?.ml}
                     {selectedVariant?.unit}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {product.variants.map((variant) => (
+                    {(product as any).variants.map((variant: any) => (
                       <button
                         key={variant.id}
                         onClick={() => handleVariantChange(variant)}

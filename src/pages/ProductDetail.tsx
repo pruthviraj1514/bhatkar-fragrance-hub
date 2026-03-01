@@ -20,24 +20,24 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard } from "@/components/products/ProductCard";
 import ProductReviews from "@/components/reviews/ProductReviews";
-import { products } from "@/data/products";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { normalizeProductImages } from "@/lib/imageUtils";
+import { useProducts } from "@/contexts/ProductContext";
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const localProduct = products.find((p) => p.id === id);
   const { addItem } = useCart();
+  const { products } = useProducts();
 
-  const [remoteProduct, setRemoteProduct] = useState<any | null>(null);
+  // Find product from global cache
+  const product = products.find((p: any) => p.id == id); // Loose equality in case of string/number mismatch
+
   const [variants, setVariants] = useState<any[]>([]);
   const [variantImages, setVariantImages] = useState<any[]>([]); // Variant-specific images
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
-
-  const product = localProduct || remoteProduct;
 
   // Default to first variant or fallback
   const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
@@ -60,8 +60,7 @@ export default function ProductDetail() {
     : (product?.images || []).filter((img: any): img is string => typeof img === 'string');
 
   useEffect(() => {
-    if (localProduct) return; // nothing to fetch
-    if (!id) return;
+    if (!product || !product.id) return;
 
     let mounted = true;
     setLoadingRemote(true);
@@ -69,60 +68,15 @@ export default function ProductDetail() {
 
     (async () => {
       try {
-        // Fetch product with images
-        const productRes = await api.get(`/products/${id}/with-images`);
-        const p = productRes.data?.data || productRes.data;
-
-        if (!mounted) return;
-
-        if (!p) {
-          setRemoteError('Product not found');
-          setLoadingRemote(false);
-          return;
-        }
-
-        // Normalize backend product
-        let normalized = {
-          ...p,
-          description: p.description || p.short_description || '',
-          notes: p.notes || { top: [], middle: [], base: [] },
-          sizes: p.sizes || [{ ml: p.quantity_ml || 100, price: p.price || 0 }],
-          longevity: p.longevity || 'moderate',
-          rating: p.rating || 4.5,
-          reviewCount: p.reviewCount || p.review_count || 0,
-          inStock: (p.stock ?? p.quantity ?? 0) > 0,
-        };
-
-        // Use standard normalization utility for images and consistent structure
-        normalized = normalizeProductImages(normalized);
-
-        // **CRITICAL FIX**: Inject local asset images to prevent Supabase timeouts for known products
-        const matchingStatic = products.find(sp =>
-          sp.name && p.name && sp.name.toLowerCase().trim() === p.name.toLowerCase().trim()
-        );
-        if (matchingStatic && matchingStatic.images && matchingStatic.images.length > 0) {
-          normalized.images = matchingStatic.images;
-          if (normalized.image_url !== undefined) {
-            normalized.image_url = matchingStatic.images[0];
-          }
-        }
-
-        // Ensure description is a string
-        if (typeof normalized.description !== 'string') {
-          normalized.description = '';
-        }
-
-        setRemoteProduct(normalized);
-
         // Fetch variants for this product
         try {
-          const variantRes = await api.get(`/variants/product/${p.id}`);
+          const variantRes = await api.get(`/variants/product/${product.id}`);
           if (!mounted) return;
 
           let variantData = variantRes?.data?.data || [];
 
           // Filter out invalid variants and sort by value
-          variantData = variantData.filter(v => v && v.id).sort((a, b) => a.variant_value - b.variant_value);
+          variantData = variantData.filter((v: any) => v && v.id).sort((a: any, b: any) => a.variant_value - b.variant_value);
 
           setVariants(variantData);
 
@@ -133,33 +87,33 @@ export default function ProductDetail() {
             // No variants found - use product's base characteristics
             const fallbackVariant = {
               id: null,
-              product_id: p.id,
-              variant_name: `${p.quantity_ml || 100}${p.quantity_unit || 'ml'}`,
-              variant_value: p.quantity_ml || 100,
-              variant_unit: p.quantity_unit || 'ml',
-              price: p.price || 0,
-              stock: p.stock || 0
+              product_id: product.id,
+              variant_name: `${product.quantity_ml || 100}${product.quantity_unit || 'ml'}`,
+              variant_value: product.quantity_ml || 100,
+              variant_unit: product.quantity_unit || 'ml',
+              price: product.price || 0,
+              stock: product.stock || 0
             };
             setSelectedVariant(fallbackVariant);
           }
         } catch (variantErr) {
           if (!mounted) return;
           // Variants endpoint failed - use product's base characteristics
-          console.warn('Could not fetch variants, using product base:', { price: p.price, stock: p.stock });
+          console.warn('Could not fetch variants, using product base:', { price: product.price, stock: product.stock });
           const fallbackVariant = {
             id: null,
-            product_id: p.id,
-            variant_name: `${p.quantity_ml || 100}${p.quantity_unit || 'ml'}`,
-            variant_value: p.quantity_ml || 100,
-            variant_unit: p.quantity_unit || 'ml',
-            price: p.price || 0,
-            stock: p.stock || 0
+            product_id: product.id,
+            variant_name: `${product.quantity_ml || 100}${product.quantity_unit || 'ml'}`,
+            variant_value: product.quantity_ml || 100,
+            variant_unit: product.quantity_unit || 'ml',
+            price: product.price || 0,
+            stock: product.stock || 0
           };
           setSelectedVariant(fallbackVariant);
         }
       } catch (err: any) {
         if (!mounted) return;
-        setRemoteError(err?.response?.data?.message || err.message || 'Failed to load product');
+        setRemoteError(err?.response?.data?.message || err.message || 'Failed to load product details');
       } finally {
         if (mounted) setLoadingRemote(false);
       }
@@ -168,7 +122,7 @@ export default function ProductDetail() {
     return () => {
       mounted = false;
     };
-  }, [id, localProduct]);
+  }, [product?.id]);
 
   // Load variant-specific images when variant is selected
   useEffect(() => {
@@ -243,7 +197,7 @@ export default function ProductDetail() {
     }
 
     // Add to cart with selected quantity
-    addItem(product, selectedVariant.variant_value, variantPrice, quantity);
+    addItem(product as any, selectedVariant.variant_value, variantPrice, quantity);
     toast.success(`${product.name} added to cart!`, {
       description: `${selectedVariant.variant_name} × ${quantity} | ₹${(variantPrice * quantity).toFixed(2)}`,
     });
@@ -251,10 +205,9 @@ export default function ProductDetail() {
 
   const relatedProducts = products
     .filter(
-      (p) =>
+      (p: any) =>
         p.id !== product.id &&
-        (p.fragranceType === product.fragranceType ||
-          p.category === product.category)
+        (p.category === product.category)
     )
     .slice(0, 4);
 
@@ -369,24 +322,19 @@ export default function ProductDetail() {
             <div className="md:col-span-1 lg:col-span-2">
               {/* Badges */}
               <div className="flex gap-2 mb-4">
-                {product.isNewArrival && (
-                  <Badge className="bg-primary text-primary-foreground">
-                    New Arrival
-                  </Badge>
-                )}
-                {product.isBestSeller && (
+                {product.is_best_seller && (
                   <Badge className="bg-accent text-accent-foreground">
                     Best Seller
                   </Badge>
                 )}
-                {product.isLuxury && (
+                {product.is_luxury_product && (
                   <Badge className="bg-charcoal text-ivory">Luxury</Badge>
                 )}
               </div>
 
               {/* Category */}
               <p className="text-sm uppercase tracking-wider text-muted-foreground mb-2">
-                {product.category} • {product.fragranceType}
+                {product.category}
               </p>
 
               {/* Name */}
@@ -546,35 +494,6 @@ export default function ProductDetail() {
                     ))}
                   </div>
                 </div>
-              ) : localProduct?.sizes && localProduct.sizes.length > 0 ? (
-                // Fallback for static products
-                <div className="mb-8">
-                  <Label className="text-base font-semibold mb-4 block">
-                    Select Size
-                  </Label>
-                  <div className="flex gap-3">
-                    {localProduct.sizes.map((size: any) => (
-                      <button
-                        key={size.ml}
-                        onClick={() => {
-                          setSelectedVariant(size);
-                          setQuantity(1);
-                        }}
-                        className={cn(
-                          "px-6 py-3 rounded-lg border-2 transition-all duration-300",
-                          selectedVariant?.ml === size.ml
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        )}
-                      >
-                        <span className="block font-semibold">{size.ml}ml</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatPrice(size.price)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               ) : null}
 
               {/* Quantity */}
@@ -709,7 +628,7 @@ export default function ProductDetail() {
                         {noteGroup.desc}
                       </p>
                       <div className="flex flex-wrap justify-center gap-2">
-                        {noteGroup.notes.map((note) => (
+                        {noteGroup.notes?.map((note: string) => (
                           <Badge
                             key={note}
                             variant="secondary"
@@ -730,9 +649,8 @@ export default function ProductDetail() {
                 <dl className="space-y-4">
                   {[
                     { label: "Category", value: product.category },
-                    { label: "Fragrance Type", value: product.fragranceType },
                     { label: "Longevity", value: product.longevity },
-                    { label: "Available Sizes", value: product.sizes.map((s) => `${s.ml}ml`).join(", ") },
+                    { label: "Available Sizes", value: product.sizes?.map((s: any) => `${s.ml}ml`).join(", ") || `${product.quantity_ml}ml` },
                   ].map((item) => (
                     <div
                       key={item.label}
@@ -761,10 +679,10 @@ export default function ProductDetail() {
               You May Also Like
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((relatedProduct, index) => (
+              {relatedProducts.map((relatedProduct: any, index: number) => (
                 <ProductCard
                   key={relatedProduct.id}
-                  product={relatedProduct}
+                  product={relatedProduct as any}
                   index={index}
                 />
               ))}
