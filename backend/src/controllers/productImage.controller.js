@@ -184,7 +184,7 @@ exports.getProductWithImages = async (req, res) => {
 const productCache = {
   data: null,
   timestamp: 0,
-  ttl: 60000 // 60 seconds
+  ttl: 300000 // 5 minutes cache to reduce DB load
 };
 
 const getCachedProducts = () => {
@@ -231,7 +231,7 @@ exports.getAllProductsWithImages = async (req, res) => {
 
     // Fetch from DB with timeout protection
     const dbPromise = ProductImage.getAllProductsWithImages();
-    const timeoutMs = 25000; // Increased to 25s for Render cold starts
+    const timeoutMs = 13000; // Aligned with DB timeout, slightly below frontend's 15s
     const timeoutPromise = new Promise((resolve, reject) => {
       setTimeout(() => reject(new Error('DB query timeout')), timeoutMs);
     });

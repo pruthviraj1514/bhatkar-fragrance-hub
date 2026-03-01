@@ -150,6 +150,8 @@ class ProductImage {
     try {
       const result = await db.query(getAllProductsWithImagesQuery);
 
+      // PostgreSQL json_agg returns an array automatically with pg driver.
+      // Filter out null images before responding.
       return result.rows.map(product => {
         let images = product.images;
         if (typeof images === 'string') {
@@ -173,20 +175,9 @@ class ProductImage {
         };
       });
     } catch (error) {
-      logger.warn(`Aggregate query for getAllProductsWithImages failed: ${error.message}. Using fallback.`);
-      try {
-        const products = await Product.getAll();
-        const results = [];
-        for (const p of products) {
-          let images = await ProductImage.getProductImages(p.id);
-          if (!Array.isArray(images)) images = [];
-          results.push({ ...p, images: images.filter(img => img && img.image_url !== null) });
-        }
-        return results;
-      } catch (fallbackError) {
-        logger.error(`Fallback getAllProductsWithImages failure: ${fallbackError.message}`);
-        throw fallbackError;
-      }
+      logger.error(`Aggregate query for getAllProductsWithImages failed: ${error.message}`);
+      // Throw error instead of using O(N) fallback which causes request timeouts
+      throw error;
     }
   }
 
