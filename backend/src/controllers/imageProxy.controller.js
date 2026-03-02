@@ -74,6 +74,8 @@ async function proxyImage(req, res) {
         logger.debug(`⚡ Cache HIT: ${filename}`);
         res.set('Content-Type', cached.contentType);
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
         res.set('X-Cache', 'HIT');
         return res.send(cached.buffer);
     }
@@ -111,6 +113,8 @@ async function proxyImage(req, res) {
         res.set('Content-Type', contentType);
         res.set('Content-Length', buffer.length);
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
         res.set('X-Cache', 'MISS');
         return res.send(buffer);
 
