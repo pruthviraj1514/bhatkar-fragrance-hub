@@ -21,7 +21,9 @@ const app = express();
 // ========================================================================
 // SECURITY & OPTIMIZATION MIDDLEWARE
 // ========================================================================
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 
 // ===== CRITICAL: CORS MUST BE FIRST =====
@@ -54,6 +56,14 @@ if (process.env.NODE_ENV !== 'test') {
 // ========================================================================
 // HEALTH CHECK ENDPOINTS
 // ========================================================================
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
 
 app.get("/health", (req, res) => {
   res.status(200).json({

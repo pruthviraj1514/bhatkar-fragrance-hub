@@ -80,23 +80,35 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(cachedOnMount.length === 0); // true only if cache is empty
     const [error, setError] = useState<string | null>(null);
 
-    // Initial load: cache is already in state; just silently refresh from network
+    const SUPABASE_PROJECT_ID = 'kztbfdzvulahrivixgkx';
+    const SUPABASE_PUBLIC_URL_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/products/`;
+
+    function toImageUrl(url: string, useProxy = true): string {
+        if (!url || !url.startsWith('http')) return url;
+
+        // Check if it's a Supabase storage URL
+        const SUPABASE_STORAGE_RE = /https?:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/products\//;
+        const match = url.match(SUPABASE_STORAGE_RE);
+
+        if (!match) return url;
+
+        const filename = url.slice(match.index! + match[0].length);
+
+        if (useProxy) {
+            return `${BACKEND_URL}/api/images/proxy/${filename}`;
+        }
+
+        return `${SUPABASE_PUBLIC_URL_BASE}${filename}`;
+    }
+
+    // Initial load: show cache but ALWAYS fetch fresh data
     useEffect(() => {
         let mounted = true;
-
-        const initializeStore = async () => {
-            // Background network refresh (cache already shown above)
-            await fetchProducts(true, mounted, () => mounted);
-        };
-
-        initializeStore();
-
-        return () => {
-            mounted = false;
-        };
+        fetchProducts(false, mounted); // Set background=false to show progress if cache is old
+        return () => { mounted = false; };
     }, []);
 
-    const fetchProducts = async (isBackground = false, _mounted = true, isMounted?: () => boolean) => {
+    const fetchProducts = async (isBackground = false, _mounted = true) => {
         if (!isBackground) {
             setLoading(true);
         }
@@ -131,8 +143,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                         let url: string;
                         if (typeof img === 'string') url = img;
                         else if (img && typeof img === 'object' && img.image_url) url = img.image_url;
-                        else url = '/images/fallback/perfume1.svg';
-                        return toProxyUrl(url); // Rewrite Supabase → proxy
+                        else return '/images/fallback/perfume1.svg';
+
+                        // MASTER FIX: Try direct public URL if configured, fallback to proxy handled by SafeImage
+                        return toImageUrl(url, false); // false = use direct public URL
                     });
                 }
 

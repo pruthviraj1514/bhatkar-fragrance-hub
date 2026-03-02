@@ -60,12 +60,25 @@ const SafeImage: React.FC<SafeImageProps> = ({
     };
 
     const handleError = () => {
+        // 1. If it's a Supabase direct URL and we haven't tried proxy yet, try proxy
+        const SUPABASE_STORAGE_RE = /https?:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/products\//;
+        if (imgSrc.match(SUPABASE_STORAGE_RE) && !imgSrc.includes('/api/images/proxy/')) {
+            const match = imgSrc.match(SUPABASE_STORAGE_RE);
+            const filename = imgSrc.slice(match!.index! + match![0].length);
+            const BACKEND_URL = window.location.origin.includes('localhost')
+                ? 'http://localhost:5000'
+                : 'https://bhatkar-fragrance-hub-1.onrender.com';
+
+            setImgSrc(`${BACKEND_URL}/api/images/proxy/${filename}`);
+            return;
+        }
+
+        // 2. If proxy/other failed, try the local fallback image
         if (!attemptedLocal && imgSrc !== LOCAL_FALLBACK) {
-            // First try the local fallback image
             setImgSrc(LOCAL_FALLBACK);
             setAttemptedLocal(true);
         } else if (!errored) {
-            // If local fallback also fails, use the inline SVG
+            // 3. Final safety net: inline SVG
             setErrored(true);
             setImgSrc(fallback);
             setLoaded(true);
