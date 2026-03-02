@@ -128,19 +128,29 @@ app.use("/api/payment", paymentRoute);
 // SERVE FRONTEND (SPA FALLBACK)
 // ========================================================================
 
-// Serve static files from the React app build directory
-// Correct path assuming backend/src/app.js and frontend is in root/dist
-const distPath = path.join(__dirname, "../../dist");
+// Correct path assuming backend/src/app.js means we go up two levels to root, then /dist
+const distPath = path.resolve(__dirname, "../../dist");
+console.log(`📂 [SPA] Static assets path: ${distPath}`);
+
+// 1. Serve static files from the React app build directory
 app.use(express.static(distPath));
 
-// Catch-all route to serve index.html for any non-API routes
-// This MUST be the last route
+// 2. Catch-all route to serve index.html for any non-API routes
+// This handles client-side routing like /shop, /checkout, etc.
 app.get("*", (req, res, next) => {
   // If it's an API route that reached here, let it go to 404 handler
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
     return next();
   }
-  res.sendFile(path.join(distPath, "index.html"));
+
+  // Serve index.html for all other paths
+  res.sendFile(path.join(distPath, "index.html"), (err) => {
+    if (err) {
+      console.error("❌ [SPA] Error sending index.html:", err.message);
+      // Fallback if static file is missing (might happen during build)
+      res.status(404).send("Frontend build not found. Please run 'npm run build' first.");
+    }
+  });
 });
 
 // ========================================================================
