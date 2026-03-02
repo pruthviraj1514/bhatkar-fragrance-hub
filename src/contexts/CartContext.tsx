@@ -1,8 +1,15 @@
-import React, { createContext, useContext, useReducer, ReactNode } from "react";
-import { Product } from "@/data/products";
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from "react";
 
+// ─── Cart Item ────────────────────────────────────────────────────────────────
 export interface CartItem {
-  product: Product;
+  product: {
+    id: string | number;
+    name: string;
+    brand?: string;
+    images?: string[];
+    image_url?: string;
+    [key: string]: any;
+  };
   quantity: number;
   selectedSize: number;
   selectedPrice: number;
@@ -14,34 +21,63 @@ interface CartState {
 }
 
 type CartAction =
-  | { type: "ADD_ITEM"; payload: { product: Product; size: number; price: number; quantity?: number } }
-  | { type: "REMOVE_ITEM"; payload: { productId: string; size: number } }
-  | { type: "UPDATE_QUANTITY"; payload: { productId: string; size: number; quantity: number } }
+  | { type: "ADD_ITEM"; payload: { product: any; size: number; price: number; quantity?: number } }
+  | { type: "REMOVE_ITEM"; payload: { productId: string | number; size: number } }
+  | { type: "UPDATE_QUANTITY"; payload: { productId: string | number; size: number; quantity: number } }
   | { type: "CLEAR_CART" }
   | { type: "TOGGLE_CART" }
   | { type: "OPEN_CART" }
-  | { type: "CLOSE_CART" };
+  | { type: "CLOSE_CART" }
+  | { type: "HYDRATE"; payload: CartItem[] };
+
+const CART_STORAGE_KEY = "cart_items";
+
+// ─── Load from localStorage ───────────────────────────────────────────────────
+function loadCartFromStorage(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate each item has required fields
+    return parsed.filter(
+      (item: any) =>
+        item &&
+        item.product &&
+        typeof item.quantity === "number" &&
+        typeof item.selectedPrice === "number"
+    );
+  } catch {
+    return [];
+  }
+}
 
 const initialState: CartState = {
-  items: [],
+  items: loadCartFromStorage(), // Hydrate instantly from localStorage
   isOpen: false,
 };
 
+// ─── Reducer ──────────────────────────────────────────────────────────────────
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
+    case "HYDRATE":
+      return { ...state, items: action.payload };
+
     case "ADD_ITEM": {
-      const existingItemIndex = state.items.findIndex(
+      const existingIndex = state.items.findIndex(
         (item) =>
-          item.product.id === action.payload.product.id &&
+          String(item.product.id) === String(action.payload.product.id) &&
           item.selectedSize === action.payload.size
       );
+      const qty = action.payload.quantity || 1;
 
-      const quantityToAdd = action.payload.quantity || 1;
-
-      if (existingItemIndex > -1) {
-        const updatedItems = [...state.items];
-        updatedItems[existingItemIndex].quantity += quantityToAdd;
-        return { ...state, items: updatedItems, isOpen: true };
+      if (existingIndex > -1) {
+        const updated = [...state.items];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + qty,
+        };
+        return { ...state, items: updated, isOpen: true };
       }
 
       return {
@@ -50,27 +86,26 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           ...state.items,
           {
             product: action.payload.product,
-            quantity: quantityToAdd,
+            quantity: qty,
             selectedSize: action.payload.size,
-            selectedPrice: action.payload.price,
+            selectedPrice: Number(action.payload.price) || 0,
           },
         ],
         isOpen: true,
       };
     }
 
-    case "REMOVE_ITEM": {
+    case "REMOVE_ITEM":
       return {
         ...state,
         items: state.items.filter(
           (item) =>
             !(
-              item.product.id === action.payload.productId &&
+              String(item.product.id) === String(action.payload.productId) &&
               item.selectedSize === action.payload.size
             )
         ),
       };
-    }
 
     case "UPDATE_QUANTITY": {
       if (action.payload.quantity <= 0) {
@@ -79,17 +114,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           items: state.items.filter(
             (item) =>
               !(
-                item.product.id === action.payload.productId &&
+                String(item.product.id) === String(action.payload.productId) &&
                 item.selectedSize === action.payload.size
               )
           ),
         };
       }
-
       return {
         ...state,
         items: state.items.map((item) =>
-          item.product.id === action.payload.productId &&
+          String(item.product.id) === String(action.payload.productId) &&
             item.selectedSize === action.payload.size
             ? { ...item, quantity: action.payload.quantity }
             : item
@@ -114,11 +148,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
   }
 }
 
+// ─── Context ──────────────────────────────────────────────────────────────────
 interface CartContextType {
   state: CartState;
-  addItem: (product: Product, size: number, price: number, quantity?: number) => void;
-  removeItem: (productId: string, size: number) => void;
-  updateQuantity: (productId: string, size: number, quantity: number) => void;
+  addItem: (product: any, size: number, price: number, quantity?: number) => void;
+  removeItem: (productId: string | number, size: number) => void;
+  updateQuantity: (productId: string | number, size: number, quantity: number) => void;
   clearCart: () => void;
   toggleCart: () => void;
   openCart: () => void;
@@ -132,26 +167,34 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
 
-  const addItem = (product: Product, size: number, price: number, quantity?: number) => {
+  // ── Persist cart to localStorage on every change ──────────────────────────
+  useEffect(() => {
+    try {
+      // Don't persist isOpen — only persist the items
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
+    } catch {
+      // Storage might be full or unavailable; fail silently
+    }
+  }, [state.items]);
+
+  const addItem = (product: any, size: number, price: number, quantity?: number) =>
     dispatch({ type: "ADD_ITEM", payload: { product, size, price, quantity } });
-  };
 
-  const removeItem = (productId: string, size: number) => {
+  const removeItem = (productId: string | number, size: number) =>
     dispatch({ type: "REMOVE_ITEM", payload: { productId, size } });
-  };
 
-  const updateQuantity = (productId: string, size: number, quantity: number) => {
+  const updateQuantity = (productId: string | number, size: number, quantity: number) =>
     dispatch({ type: "UPDATE_QUANTITY", payload: { productId, size, quantity } });
-  };
 
   const clearCart = () => dispatch({ type: "CLEAR_CART" });
   const toggleCart = () => dispatch({ type: "TOGGLE_CART" });
   const openCart = () => dispatch({ type: "OPEN_CART" });
   const closeCart = () => dispatch({ type: "CLOSE_CART" });
 
-  const totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
+  // ── Safe total calculation — never NaN, never incorrect after refresh ──────
+  const totalItems = state.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalPrice = state.items.reduce(
-    (sum, item) => sum + (Number(item.selectedPrice) || 0) * item.quantity,
+    (sum, item) => sum + (Number(item.selectedPrice) || 0) * (item.quantity || 0),
     0
   );
 
