@@ -39,6 +39,10 @@ async function runStartupMigrations(db, loggerUtil = logger) {
     // Migration 6: Fix is_active NULL values and set default
     await fixIsActiveDefault(db, loggerUtil);
 
+    // Migration 7: Create order_items table and fix orders table for multi-item orders
+    await createOrderItemsTable(db, loggerUtil);
+    await fixOrdersTableForMultiItemOrders(db, loggerUtil);
+
     loggerUtil.info('✅ All startup migrations completed successfully');
     return { success: true, message: 'Migrations complete' };
 
@@ -311,6 +315,104 @@ async function fixIsActiveDefault(db, loggerUtil) {
   }
 }
 
+/**
+ * Create order_items table for multi-item orders
+ */
+async function createOrderItemsTable(db, loggerUtil) {
+  try {
+    // Check if order_items table exists
+    const { rows: tables } = await db.query(`
+      SELECT tablename FROM pg_tables 
+      WHERE schemaname = 'public' 
+      AND tablename = 'order_items'
+    `);
+
+    if (tables.length > 0) {
+      loggerUtil.debug('✓ order_items table already exists');
+      return;
+    }
+
+    loggerUtil.info('  Creating order_items table...');
+    await db.query(`
+      CREATE TABLE order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INT NOT NULL,
+        product_id INT NOT NULL,
+        quantity INT NOT NULL,
+        price DECIMAL(10, 2) NOT NULL,
+        subtotal DECIMAL(10, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
+        
+        INDEX idx_order_id (order_id),
+        INDEX idx_product_id (product_id)
+      )
+    `);
+
+    loggerUtil.info('  ✅ Created order_items table');
+
+  } catch (error) {
+    loggerUtil.warn('  ⚠️ Could not create order_items table:', error.message);
+  }
+}
+
+/**
+ * Make product_id and quantity nullable in orders table
+ */
+async function fixOrdersTableForMultiItemOrders(db, loggerUtil) {
+  try {
+    // Check if product_id is already nullable
+    const { rows: columns } = await db.query(`
+      SELECT is_nullable FROM information_schema.columns 
+      WHERE table_name = 'orders' 
+      AND table_schema = 'public'
+      AND column_name = 'product_id'
+    `);
+
+    if (columns.length > 0 && columns[0].is_nullable === 'YES') {
+      loggerUtil.debug('✓ product_id is already nullable');
+      return;
+    }
+
+    loggerUtil.info('  Making product_id and quantity nullable in orders table...');
+    
+    // Drop foreign key if exists
+    try {
+      await db.query(`
+        ALTER TABLE orders 
+        DROP CONSTRAINT orders_product_id_fkey
+      `);
+    } catch (e) {
+      loggerUtil.debug('  No existing foreign key constraint');
+    }
+
+    // Make columns nullable
+    await db.query(`
+      ALTER TABLE orders 
+      ALTER COLUMN product_id DROP NOT NULL,
+      ALTER COLUMN quantity DROP NOT NULL
+    `);
+
+    // Re-add foreign key as optional
+    try {
+      await db.query(`
+        ALTER TABLE orders 
+        ADD CONSTRAINT orders_product_id_fkey 
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+      `);
+    } catch (e) {
+      loggerUtil.debug('  Could not add foreign key back');
+    }
+
+    loggerUtil.info('  ✅ Fixed orders table for multi-item support');
+
+  } catch (error) {
+    loggerUtil.warn('  ⚠️ Could not fix orders table:', error.message);
+  }
+}
+
 module.exports = {
   runStartupMigrations,
   addIsActiveColumn,
@@ -318,5 +420,7 @@ module.exports = {
   addImageFormatColumn,
   addIsThumbnailColumn,
   addUsersTableColumns,
-  createIndexes
+  createIndexes,
+  createOrderItemsTable,
+  fixOrdersTableForMultiItemOrders
 };

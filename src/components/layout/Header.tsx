@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, Menu, X, Heart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ function Header() {
   const { items: wishlistItems } = useWishlist();
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-white/70 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 transition-all duration-300">
@@ -107,7 +108,7 @@ function Header() {
               variant="ghost"
               size="icon"
               className="hidden md:flex relative rounded-l-none border-l border-border"
-              onClick={() => (window.location.href = "/wishlist")}
+              onClick={() => navigate("/wishlist")}
               aria-label="Wishlist"
             >
               <Heart className="h-5 w-5" />
@@ -209,7 +210,7 @@ function Header() {
                   size="icon"
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    window.location.href = "/wishlist";
+                    navigate("/wishlist");
                   }}
                   className="relative"
                 >

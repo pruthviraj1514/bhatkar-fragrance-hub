@@ -78,16 +78,25 @@ class PaymentService {
         }, contact ? { contact } : {})
       });
 
-      // 4. Save order in database without items_json
+      // 4. Save order in database
       const orderInsertResult = await conn.query(
         `INSERT INTO orders (user_id, total_amount, razorpay_order_id, status, created_at)
          VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
         [userId, finalAmount, razorpayOrder.id, 'PENDING']
       );
 
-      await conn.query('COMMIT');
-
       const orderId = orderInsertResult.rows[0].id;
+
+      // 5. Insert individual items into order_items table
+      for (const item of validatedItems) {
+        await conn.query(
+          `INSERT INTO order_items (order_id, product_id, quantity, price, subtotal, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [orderId, item.productId, item.quantity, item.price, item.total]
+        );
+      }
+
+      await conn.query('COMMIT');
       logger.info(`✅ Multi-item Order created - Order ID: ${orderId}, Razorpay: ${razorpayOrder.id}, Items: ${items.length}`);
 
       return {

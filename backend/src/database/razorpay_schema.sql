@@ -15,8 +15,8 @@
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  product_id INT NOT NULL,
-  quantity INT DEFAULT 1 NOT NULL,
+  product_id INT NULL COMMENT 'Nullable - individual items stored in order_items table',
+  quantity INT DEFAULT NULL COMMENT 'Nullable - individual items stored in order_items table',
   total_amount DECIMAL(10, 2) NOT NULL COMMENT 'Amount in INR',
   razorpay_order_id VARCHAR(100) NOT NULL UNIQUE,
   status ENUM('PENDING', 'PAID', 'FAILED') DEFAULT 'PENDING',
@@ -33,6 +33,27 @@ CREATE TABLE IF NOT EXISTS orders (
   
   -- Foreign keys (optional)
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- ORDER_ITEMS TABLE (for multi-item orders)
+-- ============================================
+CREATE TABLE IF NOT EXISTS order_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  product_id INT NOT NULL,
+  quantity INT NOT NULL,
+  price DECIMAL(10, 2) NOT NULL COMMENT 'Price per unit at time of order',
+  subtotal DECIMAL(10, 2) NOT NULL COMMENT 'quantity * price',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Indexes
+  INDEX idx_order_id (order_id),
+  INDEX idx_product_id (product_id),
+  
+  -- Foreign keys
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
