@@ -60,7 +60,9 @@ class PaymentService {
       }
 
       // Add 10% tax (matching frontend logic)
-      const finalAmount = totalAmount * 1.1;
+      let finalAmount = totalAmount * 1.1;
+      // Round to 2 decimal places to avoid floating point precision issues
+      finalAmount = Math.round(finalAmount * 100) / 100;
 
       if (finalAmount <= 0 || finalAmount > 1000000) {
         throw new Error('Invalid order amount');
