@@ -196,12 +196,6 @@ exports.deleteProduct = async (req, res) => {
         // Delete product variants
         await client.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
         
-        // Delete variant images
-        await client.query(
-            'DELETE FROM product_variant_images WHERE variant_id IN (SELECT id FROM product_variants WHERE product_id = $1)',
-            [id]
-        );
-        
         // Delete reviews
         await client.query('DELETE FROM reviews WHERE product_id = $1', [id]);
         
