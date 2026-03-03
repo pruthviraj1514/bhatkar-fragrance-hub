@@ -183,60 +183,60 @@ exports.updateProduct = async (req, res) => {
 
 // Delete product
 exports.deleteProduct = async (req, res) => {
+    const client = await require('../config/db').getConnection();
     try {
         const { id } = req.params;
-        const db = require('../config/db');
 
         // Start transaction to delete related records
-        const client = await db.connect();
-        try {
-            await client.query('BEGIN');
+        await client.query('BEGIN');
 
-            // Delete product images
-            await client.query('DELETE FROM product_images WHERE product_id = $1', [id]);
-            
-            // Delete product variants
-            await client.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
-            
-            // Delete variant images
-            await client.query(
-                'DELETE FROM product_variant_images WHERE variant_id IN (SELECT id FROM product_variants WHERE product_id = $1)',
-                [id]
-            );
-            
-            // Delete reviews
-            await client.query('DELETE FROM reviews WHERE product_id = $1', [id]);
-            
-            // Delete orders (related to this product)
-            await client.query('DELETE FROM orders WHERE product_id = $1', [id]);
+        // Delete product images
+        await client.query('DELETE FROM product_images WHERE product_id = $1', [id]);
+        
+        // Delete product variants
+        await client.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
+        
+        // Delete variant images
+        await client.query(
+            'DELETE FROM product_variant_images WHERE variant_id IN (SELECT id FROM product_variants WHERE product_id = $1)',
+            [id]
+        );
+        
+        // Delete reviews
+        await client.query('DELETE FROM reviews WHERE product_id = $1', [id]);
+        
+        // Delete orders (related to this product)
+        await client.query('DELETE FROM orders WHERE product_id = $1', [id]);
 
-            // Finally delete the product
-            const result = await client.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+        // Finally delete the product
+        const result = await client.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
 
-            if (result.rows.length === 0) {
-                await client.query('ROLLBACK');
-                logger.warn(`Product not found for delete: ${id}`);
-                return res.status(404).send({
-                    status: 'error',
-                    message: `Product with id ${id} not found`
-                });
-            }
-
-            await client.query('COMMIT');
-            logger.info(`Product deleted with all related records: ${id}`);
-            return res.status(200).send({
-                status: 'success',
-                message: 'Product deleted successfully',
-                data: result.rows[0]
-            });
-        } catch (error) {
+        if (result.rows.length === 0) {
             await client.query('ROLLBACK');
-            throw error;
-        } finally {
+            logger.warn(`Product not found for delete: ${id}`);
             client.release();
+            return res.status(404).send({
+                status: 'error',
+                message: `Product with id ${id} not found`
+            });
         }
+
+        await client.query('COMMIT');
+        logger.info(`Product deleted with all related records: ${id}`);
+        client.release();
+        return res.status(200).send({
+            status: 'success',
+            message: 'Product deleted successfully',
+            data: result.rows[0]
+        });
     } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (e) {
+            // Ignore rollback errors
+        }
         logger.error(`Delete product error: ${error.message}`);
+        client.release();
         return res.status(500).send({
             status: 'error',
             message: error.message || 'Failed to delete product'

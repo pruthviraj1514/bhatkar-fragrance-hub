@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, Package, Download, Loader2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
@@ -10,7 +10,6 @@ import { formatPrice } from "@/lib/utils";
 import api from "@/lib/axios";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 interface OrderItem {
   id: string;
@@ -53,7 +52,6 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const invoiceRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -107,42 +105,151 @@ export default function Orders() {
   const handleDownloadInvoice = async (order: Order) => {
     try {
       setDownloadingId(order.id);
-      const invoiceElement = invoiceRefs.current[order.id];
       
-      if (!invoiceElement) {
-        toast.error("Invoice template not found");
-        return;
-      }
-
-      // Generate PDF from invoice HTML
-      const canvas = await html2canvas(invoiceElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff"
-      });
-
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4"
       });
 
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      let yPosition = 20;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const lineHeight = 7;
+      const margin = 20;
+      const pageWidth = pdf.internal.pageSize.getWidth();
 
-      // Add additional pages if content is longer
-      let heightLeft = imgHeight - 297; // A4 height in mm
-      let position = 0;
+      // Header
+      pdf.setFontSize(24);
+      pdf.setFont(undefined, "bold");
+      pdf.text("INVOICE", margin, yPosition);
+      yPosition += 10;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= 297;
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "normal");
+      pdf.text(order.id, margin, yPosition);
+      yPosition += 12;
+
+      // Company Info Section
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.text("FROM:", margin, yPosition);
+      yPosition += 6;
+
+      pdf.setFont(undefined, "normal");
+      pdf.setFontSize(9);
+      const companyLines = [
+        "Bhatkar & Co",
+        "Fine Perfumery",
+        "R102, Moregaon 90 Feet Road",
+        "Nalasopara East, Mumbai – 401209",
+        "Maharashtra, India",
+        "+91 98765 43210",
+        "info@bhatkarcco.com"
+      ];
+
+      companyLines.forEach((line) => {
+        pdf.text(line, margin, yPosition);
+        yPosition += 5;
+      });
+
+      // Customer Info (right side)
+      yPosition = 32;
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.text("BILL TO:", pageWidth / 2, yPosition);
+      yPosition += 6;
+
+      pdf.setFont(undefined, "normal");
+      pdf.setFontSize(9);
+      const customerLines = [
+        `${order.firstName || ""} ${order.lastName || ""}`,
+        order.address || "",
+        `${order.city || ""}, ${order.state || ""} ${order.postal_code || ""}`,
+        order.country || "",
+        order.phone || "",
+        order.customerEmail || ""
+      ];
+
+      customerLines.forEach((line) => {
+        if (line.trim()) {
+          pdf.text(line, pageWidth / 2, yPosition);
+          yPosition += 5;
+        }
+      });
+
+      // Reset yPosition
+      yPosition = 85;
+
+      // Order Details
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, "bold");
+      pdf.text("Invoice Date:", margin, yPosition);
+      pdf.setFont(undefined, "normal");
+      pdf.text(new Date(order.date).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }), margin + 35, yPosition);
+
+      yPosition += 7;
+      pdf.setFont(undefined, "bold");
+      pdf.text("Order ID:", margin, yPosition);
+      pdf.setFont(undefined, "normal");
+      pdf.text(order.id, margin + 35, yPosition);
+
+      yPosition += 12;
+
+      // Items Table Header
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, "bold");
+      pdf.rect(margin, yPosition - 5, pageWidth - 2 * margin, 6);
+      pdf.text("Description", margin + 2, yPosition);
+      pdf.text("Qty", pageWidth / 2 + 20, yPosition);
+      pdf.text("Unit Price", pageWidth / 2 + 50, yPosition);
+      pdf.text("Total", pageWidth - margin - 15, yPosition);
+
+      yPosition += 10;
+
+      // Items
+      pdf.setFont(undefined, "normal");
+      order.items.forEach((item) => {
+        const description = item.name;
+        pdf.text(description.substring(0, 40), margin + 2, yPosition);
+        pdf.text(String(item.quantity), pageWidth / 2 + 20, yPosition);
+        pdf.text(formatPrice(item.price), pageWidth / 2 + 50, yPosition);
+        pdf.text(formatPrice(item.price * item.quantity), pageWidth - margin - 15, yPosition);
+        yPosition += 8;
+      });
+
+      // Totals Section
+      yPosition += 5;
+      pdf.setFont(undefined, "bold");
+      pdf.line(pageWidth - margin - 40, yPosition, pageWidth - margin, yPosition);
+      yPosition += 8;
+      pdf.text("TOTAL AMOUNT:", pageWidth - margin - 40, yPosition);
+      pdf.text(formatPrice(order.total), pageWidth - margin - 5, yPosition, { align: "right" });
+
+      // Payment Status
+      yPosition += 15;
+      pdf.setFont(undefined, "bold");
+      pdf.setFontSize(9);
+      pdf.text("Payment Status", margin, yPosition);
+      yPosition += 6;
+      pdf.setFont(undefined, "normal");
+      pdf.setFontSize(8);
+      pdf.text(`Status: ${order.status}`, margin, yPosition);
+      yPosition += 5;
+      if (order.trackingNumber) {
+        pdf.text(`Reference ID: ${order.trackingNumber}`, margin, yPosition);
       }
+
+      // Footer
+      yPosition = pageHeight - 15;
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, "normal");
+      pdf.text("Thank you for your purchase!", pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 5;
+      pdf.text("If you have any questions, please contact us at info@bhatkarcco.com", pageWidth / 2, yPosition, { align: "center" });
 
       pdf.save(`invoice-${order.id}.pdf`);
       toast.success("Invoice downloaded successfully!");
@@ -270,111 +377,6 @@ export default function Orders() {
                         <Download className="h-4 w-4" />
                         {downloadingId === order.id ? "Generating..." : "Download Invoice"}
                       </Button>
-                    </div>
-
-                    {/* Hidden Invoice Template for PDF Generation */}
-                    <div 
-                      ref={(el) => { invoiceRefs.current[order.id] = el; }}
-                      style={{ display: "none" }}
-                      className="p-8 bg-white text-black"
-                    >
-                      <div className="space-y-6">
-                        {/* Header */}
-                        <div className="border-b pb-6">
-                          <h1 className="text-3xl font-bold mb-2">INVOICE</h1>
-                          <p className="text-gray-600">{order.id}</p>
-                        </div>
-
-                        {/* Company Info & Invoice Details */}
-                        <div className="grid grid-cols-2 gap-8">
-                          <div>
-                            <h3 className="font-bold text-sm mb-2">FROM:</h3>
-                            <p className="font-bold">Bhatkar & Co</p>
-                            <p className="text-sm text-gray-600">Fine Perfumery</p>
-                            <p className="text-sm text-gray-600">R102, Moregaon 90 Feet Road</p>
-                            <p className="text-sm text-gray-600">Nalasopara East, Mumbai – 401209</p>
-                            <p className="text-sm text-gray-600">Maharashtra, India</p>
-                            <p className="text-sm text-gray-600 mt-2">+91 98765 43210</p>
-                            <p className="text-sm text-gray-600">info@bhatkarcco.com</p>
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-sm mb-2">BILL TO:</h3>
-                            <p className="font-bold">{order.firstName} {order.lastName}</p>
-                            <p className="text-sm text-gray-600">{order.address}</p>
-                            <p className="text-sm text-gray-600">{order.city}, {order.state} {order.postal_code}</p>
-                            <p className="text-sm text-gray-600">{order.country}</p>
-                            <p className="text-sm text-gray-600 mt-2">{order.phone}</p>
-                            <p className="text-sm text-gray-600">{order.customerEmail}</p>
-                          </div>
-                        </div>
-
-                        {/* Order Details */}
-                        <div className="grid grid-cols-2 gap-8 text-sm">
-                          <div>
-                            <p className="text-gray-600">Invoice Date:</p>
-                            <p className="font-bold">{new Date(order.date).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600">Order ID:</p>
-                            <p className="font-bold">{order.id}</p>
-                          </div>
-                        </div>
-
-                        {/* Items Table */}
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b-2 border-gray-800">
-                              <th className="text-left py-2 font-bold">Description</th>
-                              <th className="text-right py-2 font-bold">Quantity</th>
-                              <th className="text-right py-2 font-bold">Unit Price</th>
-                              <th className="text-right py-2 font-bold">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {order.items.map((item) => (
-                              <tr key={item.id} className="border-b border-gray-300">
-                                <td className="py-3">{item.name}</td>
-                                <td className="text-right">{item.quantity}</td>
-                                <td className="text-right">{formatPrice(item.price)}</td>
-                                <td className="text-right font-bold">{formatPrice(item.price * item.quantity)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-
-                        {/* Totals */}
-                        <div className="flex justify-end">
-                          <div className="w-64">
-                            <div className="flex justify-between py-2 border-t-2 border-gray-800">
-                              <span className="font-bold">Total Amount:</span>
-                              <span className="font-bold text-lg">{formatPrice(order.total)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Payment Status */}
-                        <div className="bg-gray-100 p-4 rounded">
-                          <h3 className="font-bold mb-2">Payment Status:</h3>
-                          <p className="text-sm">
-                            Status: <span className="font-bold uppercase">{order.status}</span>
-                          </p>
-                          {order.trackingNumber && (
-                            <p className="text-sm mt-1">
-                              Reference ID: <span className="font-bold">{order.trackingNumber}</span>
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="border-t pt-4 text-center text-xs text-gray-600">
-                          <p>Thank you for your purchase!</p>
-                          <p>If you have any questions, please contact us at info@bhatkarcco.com</p>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
