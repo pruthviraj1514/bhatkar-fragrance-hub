@@ -26,6 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 import { useProducts } from "@/contexts/ProductContext";
+import { WeekendSaleHero } from "@/components/WeekendSaleHero";
 
 const categories = [
   { value: "men", label: "Men" },
@@ -286,28 +287,7 @@ export default function Shop() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-secondary/30 py-16">
-        <div className="container px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
-              {collectionParam
-                ? collectionParam
-                  .split("-")
-                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                  .join(" ")
-                : "All Fragrances"}
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Explore our exquisite collection of handcrafted perfumes
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <WeekendSaleHero />
 
       <section className="py-12">
         <div className="container px-4">
