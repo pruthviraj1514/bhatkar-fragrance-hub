@@ -146,7 +146,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                         else return '/images/fallback/perfume1.svg';
 
                         // MASTER FIX: Prioritize Direct Supabase CDN for speed.
-                        return toImageUrl(url, false); // false = use direct CDN instead of backend proxy
+                        return toImageUrl(url, true); // false = use direct CDN instead of backend proxy
                     });
                 }
 
