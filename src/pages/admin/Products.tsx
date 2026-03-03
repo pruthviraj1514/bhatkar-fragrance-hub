@@ -348,9 +348,17 @@ export default function Products() {
                     },
                   });
 
-                  const uploadedImages = uploadResponse.data.data?.images || [];
+                  // backend currently returns `data: savedImages` which is an array.
+                  // older versions returned `{data: {images: [...]}}`.  handle both.
+                  let uploadedImages: any[] = [];
+                  if (Array.isArray(uploadResponse.data?.data)) {
+                    uploadedImages = uploadResponse.data.data;
+                  } else if (uploadResponse.data?.data?.images) {
+                    uploadedImages = uploadResponse.data.data.images;
+                  }
+
                   if (uploadedImages.length > 0) {
-                    finalUrl = uploadedImages[0].image_url;
+                    finalUrl = uploadedImages[0].image_url || uploadedImages[0].imageUrl;
                     console.log(`✅ Image uploaded to Railway: ${finalUrl}`);
                   }
                 } catch (uploadErr: any) {
@@ -544,8 +552,18 @@ export default function Products() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const uploaded = uploadResp.data.data?.images || [];
-      if (uploaded.length === 0) throw new Error('No images returned from upload');
+      // again be liberal about the response shape (same reasoning as above)
+      let uploaded: any[] = [];
+      if (Array.isArray(uploadResp.data?.data)) {
+        uploaded = uploadResp.data.data;
+      } else if (uploadResp.data?.data?.images) {
+        uploaded = uploadResp.data.data.images;
+      }
+
+      if (uploaded.length === 0) {
+        console.error('Empty upload response', uploadResp.data);
+        throw new Error('No images returned from upload');
+      }
 
       // Save uploaded URLs to variant_images via API
       const imagesPayload = uploaded.map((img: any) => ({ image_url: img.image_url, alt_text: img.alt_text || 'Variant image' }));
