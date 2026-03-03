@@ -161,7 +161,10 @@ export default function Checkout() {
           <div className="grid gap-4 md:gap-8 md:grid-cols-3">
             {/* Checkout Form - moves below on mobile */}
             <div className="md:col-span-2 order-2 md:order-1">
-              <form className="space-y-4 sm:space-y-6">
+              <form
+                className="space-y-4 sm:space-y-6"
+                onSubmit={(e) => e.preventDefault()}
+              >
                 {/* Contact Information */}
                 <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
                   <h2 className="mb-3 sm:mb-4 font-display text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -320,6 +323,7 @@ export default function Checkout() {
                         Choose your preferred payment method - UPI, Cards, Wallets, NetBanking and more available
                       </p>
                       <Button
+                        type="button"
                         onClick={proceedToPayment}
                         className="w-full"
                         size="sm"
@@ -348,6 +352,7 @@ export default function Checkout() {
                         buttonClassName="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 font-medium disable:opacity-60"
                       />
                       <Button
+                        type="button"
                         onClick={() => setPaymentReady(false)}
                         variant="outline"
                         className="w-full mt-2"
