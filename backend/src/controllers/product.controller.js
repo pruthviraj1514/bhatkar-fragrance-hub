@@ -58,7 +58,7 @@ exports.createProduct = async (req, res) => {
                 message: 'Invalid request payload'
             });
         }
-        const { name, brand, price, original_price, discount_percentage, shipping_cost, other_charges, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller, is_luxury_product, is_active } = payload;
+        const { name, brand, price, original_price, discount_percentage, shipping_cost, other_charges, quantity_ml, quantity_unit, category, concentration, description, stock, is_best_seller, is_luxury_product, is_active, images } = payload;
         // Validate required fields
         if (!name || !brand || price == null || !category || !concentration) {
             return res.status(400).send({
@@ -86,6 +86,19 @@ exports.createProduct = async (req, res) => {
         );
         logger.info(`Creating product: ${name}, brand: ${brand}, price: ${price}`);
         const data = await Product.create(product);
+        if (images && Array.isArray(images) && images.length > 0) {
+                const ProductImage = require('../models/productImage.model');
+
+                for (let i = 0; i < images.length; i++) {
+                    await ProductImage.create({
+                        product_id: data.id,
+                        image_url: images[i],
+                        image_order: i + 1,
+                        is_thumbnail: i === 0
+                    });
+                }
+            }
+
         logger.info(`Product created: ${data.id}`);
         return res.status(201).send({
             status: 'success',
