@@ -109,6 +109,26 @@ export default function Shop() {
       );
     }
 
+    // Fragrance Type filter
+    if (selectedTypes.length > 0) {
+      result = result.filter((p) =>
+        selectedTypes.some(type => 
+          p.description?.toLowerCase().includes(type) || 
+          p.name?.toLowerCase().includes(type)
+        )
+      );
+    }
+
+    // Longevity filter
+    if (selectedLongevity.length > 0) {
+      result = result.filter((p) =>
+        selectedLongevity.some(longevity => 
+          p.description?.toLowerCase().includes(longevity) || 
+          p.name?.toLowerCase().includes(longevity)
+        )
+      );
+    }
+
     // Price filter
     result = result.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
@@ -152,10 +172,12 @@ export default function Shop() {
   };
 
   const activeFiltersCount =
+    (searchQuery ? 1 : 0) +
     selectedCategories.length +
     selectedTypes.length +
     selectedLongevity.length +
     (priceRange[0] > 0 || priceRange[1] < 6000 ? 1 : 0);
+
 
   const FilterContent = () => (
     <div className="space-y-8">
@@ -291,20 +313,36 @@ export default function Shop() {
 
       <section className="py-12">
         <div className="container px-4">
-          {/* Toolbar */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
+          {/* Search Bar - Full width on mobile, partial on desktop */}
+          <div className="mb-6">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, notes..."
+                placeholder="Search by name, notes, brand..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
+                autoFocus
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
+            {searchQuery && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Found {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} matching "{searchQuery}"
+              </p>
+            )}
+          </div>
 
-            <div className="flex gap-3 items-center">
+          {/* Toolbar - Controls */}
+          <div className="flex flex-col md:flex-row gap-3 mb-8 items-start md:items-center justify-between">
+            <div className="flex gap-3 items-center w-full md:w-auto">
               {/* Refresh Button */}
               <Button
                 variant="outline"
@@ -320,17 +358,17 @@ export default function Shop() {
               {/* Mobile Filter Button */}
               <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="lg:hidden">
-                    <Filter className="h-4 w-4 mr-2" />
+                  <Button variant="outline" className="lg:hidden gap-2">
+                    <Filter className="h-4 w-4" />
                     Filters
                     {activeFiltersCount > 0 && (
-                      <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
+                      <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
                         {activeFiltersCount}
                       </span>
                     )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-full sm:w-80 overflow-y-auto">
+                <SheetContent side="left" className="w-[85vw] sm:w-80 overflow-y-auto">
                   <SheetHeader>
                     <SheetTitle className="font-display">Filters</SheetTitle>
                   </SheetHeader>
@@ -339,10 +377,12 @@ export default function Shop() {
                   </div>
                 </SheetContent>
               </Sheet>
+            </div>
 
-              {/* Sort */}
+            {/* Sort - Full width on mobile */}
+            <div className="w-full md:w-auto">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger>
                   <SlidersHorizontal className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -354,17 +394,16 @@ export default function Shop() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
 
-              {/* Results Count */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
-                  {products.length > 0 && ` (${products.length} total)`}
-                </span>
-                {productsLoading && (
-                  <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-                )}
-              </div>
+            {/* Results Count */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+              </span>
+              {productsLoading && (
+                <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              )}
             </div>
           </div>
 

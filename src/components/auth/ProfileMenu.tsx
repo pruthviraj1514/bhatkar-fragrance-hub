@@ -84,7 +84,7 @@ export function ProfileMenu() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="fixed md:absolute right-4 left-4 md:right-0 md:left-auto md:mt-2 w-auto md:w-56 bg-background border border-border rounded-lg shadow-xl z-50 top-1/2 md:top-auto -translate-y-1/2 md:translate-y-0"
+              className="fixed md:absolute top-1/2 left-1/2 md:left-auto md:top-auto md:right-0 md:mt-2 -translate-x-1/2 md:translate-x-0 -translate-y-1/2 md:translate-y-0 w-[calc(100%-2rem)] md:w-56 bg-background border border-border rounded-lg shadow-xl z-50"
             >
             {/* User Info */}
             <div className={`px-4 py-3 border-b border-border ${

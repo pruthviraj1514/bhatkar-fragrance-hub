@@ -128,7 +128,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed md:absolute right-4 left-4 md:right-0 md:left-auto md:mt-2 w-auto md:w-96 bg-background border border-border rounded-lg shadow-xl z-50 top-1/2 md:top-auto -translate-y-1/2 md:translate-y-0"
+            className="fixed md:absolute top-1/2 left-1/2 md:left-auto md:top-auto md:right-0 md:mt-2 -translate-x-1/2 md:translate-x-0 -translate-y-1/2 md:translate-y-0 w-[calc(100%-2rem)] md:w-96 max-h-[90vh] md:max-h-[500px] overflow-y-auto bg-background border border-border rounded-lg shadow-xl z-50"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -161,7 +161,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           )}
 
           {/* Content */}
-          <div className="p-6 max-h-96 overflow-y-auto">
+          <div className="p-6">
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
