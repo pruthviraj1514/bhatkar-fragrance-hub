@@ -479,14 +479,30 @@ export default function Products() {
 
     try {
       setError("");
+      setLoading(true);
+      
+      // Delete the product
       await api.delete(`/products/${id}`);
-      await fetchProducts();
-      toast.success("Product deleted successfully!");
+      
+      // Refresh the products list - this is critical for UI update
+      try {
+        const response = await api.get("/products/with-images/all");
+        setProducts(response.data.data || []);
+        setError("");
+        toast.success("Product deleted successfully!");
+      } catch (fetchErr) {
+        console.error("Failed to refresh products list:", fetchErr);
+        // If refresh fails, at least remove the deleted product from local state
+        setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
+        toast.success("Product deleted successfully! (refreshing list...)");
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Failed to delete product";
       setError(errorMessage);
       toast.error(errorMessage);
       console.error("Delete error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
