@@ -34,6 +34,7 @@ export function AdminLayout({ children, activeTab, title }: AdminLayoutProps) {
         { id: "dashboard", label: "Dashboard", icon: BarChart3, href: "/admin/dashboard" },
         { id: "products", label: "Inventory", icon: Package, href: "/admin/manage/product" },
         { id: "orders", label: "Orders", icon: ShoppingCart, href: "/admin/manage/orders" },
+        { id: "shipments", label: "Shipments", icon: Package, href: "/admin/manage/shipments" },
         { id: "reviews", label: "Reviews", icon: Star, href: "/admin/reviews" },
     ];
 

@@ -87,6 +87,16 @@ const handlePaymentCaptured = async (event) => {
   if (updated) {
     logger.info(`✅ Order ${razorpayOrderId} marked as PAID`);
 
+    // Automatically create shipment via Shiprocket
+    try {
+      const shipmentController = require('./shipment.controller');
+      const saved = await shipmentController.createShipmentInternal(existingOrder.id || updated.id);
+      logger.info(`📦 Shipment initiated for order ${razorpayOrderId}`, saved.shiprocket_order_id ? '-> ' + saved.shiprocket_order_id : '');
+    } catch (shipErr) {
+      logger.error('⚠️  Failed to auto-create shipment:', shipErr.message || shipErr);
+      // do not fail the webhook; just log
+    }
+
     // Optional: Send confirmation email to customer
     // await sendPaymentConfirmationEmail(order.email, order);
 

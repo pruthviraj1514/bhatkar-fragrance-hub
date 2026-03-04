@@ -13,72 +13,78 @@ async function fetchOrder(orderId) {
   return res.rows && res.rows[0] ? res.rows[0] : null;
 }
 
+// usable from other modules (webhook)
+async function createShipmentInternal(orderId) {
+  const order = await fetchOrder(orderId);
+  if (!order) throw new Error('Order not found');
+
+  // Idempotency: don't create if already has shiprocket_order_id
+  if (order.shiprocket_order_id) {
+    return order; // nothing to do
+  }
+
+  // Build payload from order fields
+  const customerName = order.customer_name || order.customer_email || 'Customer';
+  const itemName = order.product_name || `product-${order.product_id || ''}`;
+
+  const payload = {
+    order_id: `order_${order.id}`,
+    order_date: new Date().toISOString(),
+    pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Default',
+    channel_id: process.env.SHIPROCKET_CHANNEL_ID || 1,
+    comment: order.notes || 'Order shipment',
+    billing_customer_name: customerName,
+    billing_address: order.notes || 'N/A',
+    billing_city: order.notes || 'N/A',
+    billing_pincode: order.notes || '000000',
+    billing_state: 'N/A',
+    billing_phone: '0000000000',
+    shipping_is_billing: true,
+    shipping_customer_name: customerName,
+    shipping_address: order.notes || 'N/A',
+    shipping_city: order.notes || 'N/A',
+    shipping_pincode: order.notes || '000000',
+    shipping_state: 'N/A',
+    shipping_phone: '0000000000',
+    order_items: [
+      {
+        name: itemName,
+        sku: `SKU-${order.product_id || order.id}`,
+        units: order.quantity || 1,
+        selling_price: parseFloat(order.total_amount) || 0
+      }
+    ],
+    payment_method: 'Prepaid',
+    sub_total: parseFloat(order.total_amount) || 0,
+    length: 10, breadth: 10, height: 10, weight: 500
+  };
+
+  const resp = await shiprocket.createShipment(payload);
+  const data = resp?.data || resp;
+  const shiprocketOrderId = data?.order_id || data?.data?.order_id || data?.shipment_id || null;
+  const awb = data?.awb_code || data?.data?.awb || data?.data?.awb_code || null;
+  const courier = data?.courier_company || data?.data?.courier_company || null;
+  const trackingUrl = data?.tracking_url || null;
+  const shipmentStatus = data?.status || data?.data?.status || 'CREATED';
+
+  const updateSql = `UPDATE orders SET shiprocket_order_id = $1, awb_code = $2, courier_name = $3, tracking_url = $4, shipment_status = $5, updated_at = NOW() WHERE id = $6 RETURNING *`;
+  const updated = await db.query(updateSql, [shiprocketOrderId, awb, courier, trackingUrl, shipmentStatus, order.id]);
+
+  return updated.rows[0];
+}
+
 exports.createShipmentForOrder = async (req, res, next) => {
   const orderId = parseInt(req.params.id || req.body.orderId, 10);
   if (!orderId) return res.status(400).json({ status: 'error', message: 'order id required' });
-
   try {
-    const order = await fetchOrder(orderId);
-    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
-
-    // Idempotency: don't create if already has shiprocket_order_id
-    if (order.shiprocket_order_id) {
-      return res.status(200).json({ status: 'ok', message: 'Shipment already exists', order });
-    }
-
-    // Build a minimal adhoc payload using available order fields
-    const customerName = order.customer_name || order.customer_email || 'Customer';
-    const itemName = order.product_name || `product-${order.product_id || ''}`;
-
-    const payload = {
-      order_id: `order_${order.id}`,
-      order_date: new Date().toISOString(),
-      pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Default',
-      channel_id: process.env.SHIPROCKET_CHANNEL_ID || 1,
-      comment: order.notes || 'Order shipment',
-      billing_customer_name: customerName,
-      billing_address: order.notes || 'N/A',
-      billing_city: order.notes || 'N/A',
-      billing_pincode: order.notes || '000000',
-      billing_state: 'N/A',
-      billing_phone: '0000000000',
-      shipping_is_billing: true,
-      shipping_customer_name: customerName,
-      shipping_address: order.notes || 'N/A',
-      shipping_city: order.notes || 'N/A',
-      shipping_pincode: order.notes || '000000',
-      shipping_state: 'N/A',
-      shipping_phone: '0000000000',
-      order_items: [
-        {
-          name: itemName,
-          sku: `SKU-${order.product_id || order.id}`,
-          units: order.quantity || 1,
-          selling_price: parseFloat(order.total_amount) || 0
-        }
-      ],
-      payment_method: 'Prepaid',
-      sub_total: parseFloat(order.total_amount) || 0,
-      length: 10, breadth: 10, height: 10, weight: 500
-    };
-
-    const resp = await shiprocket.createShipment(payload);
-
-    // Map response to our orders table fields if available
-    // Shiprocket typically returns order and shipment details in resp.data or resp
-    const data = resp?.data || resp;
-    const shiprocketOrderId = data?.order_id || data?.data?.order_id || data?.shipment_id || null;
-    const awb = data?.awb_code || data?.data?.awb || data?.data?.awb_code || null;
-    const courier = data?.courier_company || data?.data?.courier_company || null;
-    const trackingUrl = data?.tracking_url || null;
-    const shipmentStatus = data?.status || data?.data?.status || 'CREATED';
-
-    const updateSql = `UPDATE orders SET shiprocket_order_id = $1, awb_code = $2, courier_name = $3, tracking_url = $4, shipment_status = $5, updated_at = NOW() WHERE id = $6 RETURNING *`;
-    const updated = await db.query(updateSql, [shiprocketOrderId, awb, courier, trackingUrl, shipmentStatus, order.id]);
-
-    return res.status(200).json({ status: 'ok', message: 'Shipment created', shiprocket: data, order: updated.rows[0] });
+    const order = await createShipmentInternal(orderId);
+    return res.status(200).json({ status: 'ok', message: 'Shipment processed', order });
   } catch (err) {
     logger.error('createShipmentForOrder failed:', err.message || err);
     return res.status(500).json({ status: 'error', message: err.message || 'Shiprocket error' });
   }
 };
+
+module.exports = {
+  createShipmentForOrder,
+  createShipmentInternal,

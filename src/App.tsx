@@ -70,6 +70,14 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/manage/shipments"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminManage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Backwards-compatible routes */}
               <Route
@@ -82,6 +90,14 @@ const App = () => (
               />
               <Route
                 path="/admin/orders"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/shipments"
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminManage />
