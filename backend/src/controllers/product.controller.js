@@ -199,15 +199,17 @@ exports.deleteProduct = async (req, res) => {
         // Delete reviews
         await client.query('DELETE FROM reviews WHERE product_id = $1', [id]);
         
-        // Delete orders (related to this product)
+        // Delete any order_items referencing this product so FK does not block us
+        await client.query('DELETE FROM order_items WHERE product_id = $1', [id]);
+        
+        // (legacy) Delete orders directly linked via product_id
         await client.query('DELETE FROM orders WHERE product_id = $1', [id]);
-
-        // Finally delete the product
+        
+        // Finally delete the product itself
         const result = await client.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
-
-        if (result.rows.length === 0) {
+        if (!result.rows || result.rows.length === 0) {
+            // nothing deleted; rollback and send 404
             await client.query('ROLLBACK');
-            logger.warn(`Product not found for delete: ${id}`);
             client.release();
             return res.status(404).send({
                 status: 'error',
@@ -231,6 +233,15 @@ exports.deleteProduct = async (req, res) => {
         }
         logger.error(`Delete product error: ${error.message}`);
         client.release();
+
+        // Provide a clearer message when FK constraint from order_items blocks deletion
+        if (error.message && error.message.includes('order_items_product_id_fkey')) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Cannot delete product because it appears in existing order items. Please remove associated orders first.'
+            });
+        }
+
         return res.status(500).send({
             status: 'error',
             message: error.message || 'Failed to delete product'

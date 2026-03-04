@@ -225,20 +225,10 @@ exports.updateProduct = async (req, res) => {
 /**
  * Delete Product
  */
+const productController = require('./product.controller');
+
 exports.deleteProduct = async (req, res) => {
-    try {
-        const { id } = req.params;
-        await Product.delete(id);
-        logger.info(`Admin deleted product: ${id}`);
-        res.status(200).json({
-            status: 'success',
-            message: 'Product deleted successfully'
-        });
-    } catch (error) {
-        if (error.kind === 'not_found') {
-            return res.status(404).json({ status: 'error', message: 'Product not found' });
-        }
-        logger.error(`Error deleting product ${req.params.id}: ${error.message}`);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
+    // delegate to the main product controller so both admin and public APIs share the same
+    // deletion logic (including related cleanup and FK handling)
+    return productController.deleteProduct(req, res);
 };
