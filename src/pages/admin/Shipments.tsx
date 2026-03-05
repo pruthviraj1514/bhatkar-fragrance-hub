@@ -44,6 +44,8 @@ export default function AdminShipments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updateLoading, setUpdateLoading] = useState<number | null>(null);
+  const [shiprocketConfigured, setShiprocketConfigured] = useState<boolean | null>(null);
+  const [shiprocketConfigMsg, setShiprocketConfigMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) navigate("/");
@@ -51,6 +53,7 @@ export default function AdminShipments() {
 
   useEffect(() => {
     fetchOrders();
+    checkConfig();
   }, []);
 
   const fetchOrders = async () => {
@@ -67,7 +70,24 @@ export default function AdminShipments() {
     }
   };
 
+  const checkConfig = async () => {
+    try {
+      const res = await api.get('/shipments/config');
+      setShiprocketConfigured(res.data.configured);
+      setShiprocketConfigMsg(res.data.message || null);
+    } catch (err: any) {
+      console.error('Failed to fetch Shiprocket config', err);
+      setShiprocketConfigured(false);
+      setShiprocketConfigMsg('Could not verify credentials');
+    }
+  };
+
   const handleCreateShipment = async (orderId: number) => {
+    if (shiprocketConfigured === false) {
+      toast.error(shiprocketConfigMsg || 'Shiprocket credentials not configured');
+      return;
+    }
+
     try {
       setUpdateLoading(orderId);
       const res = await api.post(`/shipments/create/${orderId}`);
@@ -120,6 +140,14 @@ export default function AdminShipments() {
       </div>
 
       <div className="container mx-auto px-4 mt-8">
+        {shiprocketConfigured === false && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-3">
+            <AlertCircle className="h-5 w-5" />
+            <p className="font-medium">
+              Shiprocket credentials are not configured{shiprocketConfigMsg ? `: ${shiprocketConfigMsg}` : ''}
+            </p>
+          </div>
+        )}
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
@@ -245,13 +273,13 @@ export default function AdminShipments() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {!o.shiprocket_order_id && o.status === 'PAID' && (
+                                {shiprocketConfigured && shiprocketConfigured === true && !o.shiprocket_order_id && o.status === 'PAID' && (
                                   <DropdownMenuItem onClick={() => handleCreateShipment(o.id)}>
                                     <Package className="mr-2 h-4 w-4" />
                                     Create Shipment
                                   </DropdownMenuItem>
                                 )}
-                                {o.shiprocket_order_id && (
+                                {shiprocketConfigured && shiprocketConfigured === true && o.shiprocket_order_id && (
                                   <DropdownMenuItem onClick={() => handleCreateShipment(o.id)}>
                                     <RefreshCw className="mr-2 h-4 w-4" />
                                     Refresh Shipment

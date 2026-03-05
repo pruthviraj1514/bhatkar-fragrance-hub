@@ -94,6 +94,14 @@ async function createShipmentInternal(orderId) {
 async function createShipmentForOrder(req, res) {
   const orderId = parseInt(req.params.id || req.body.orderId, 10);
 
+  // configuration guard – return 422 if credentials are missing
+  if (!process.env.SHIPROCKET_EMAIL || !process.env.SHIPROCKET_PASSWORD) {
+    return res.status(422).json({
+      status: "error",
+      message: "Shiprocket credentials not configured"
+    });
+  }
+
   if (!orderId) {
     return res.status(400).json({
       status: "error",
@@ -111,6 +119,14 @@ async function createShipmentForOrder(req, res) {
     });
   } catch (err) {
     logger.error("createShipmentForOrder failed:", err.message || err);
+
+    // if the underlying error was missing credentials, translate it to 422
+    if (err.message && err.message.includes('SHIPROCKET_EMAIL')) {
+      return res.status(422).json({
+        status: "error",
+        message: "Shiprocket credentials not configured"
+      });
+    }
 
     return res.status(500).json({
       status: "error",
