@@ -13,12 +13,17 @@ async function fetchOrder(orderId) {
   return res.rows && res.rows[0] ? res.rows[0] : null;
 }
 
-// usable from other modules
 async function createShipmentInternal(orderId) {
+  logger.info(`[Shipment] Starting process for order ${orderId}`);
+  
   const order = await fetchOrder(orderId);
-  if (!order) throw new Error('Order not found');
+  if (!order) {
+    logger.error(`[Shipment] Order not found: ${orderId}`);
+    throw new Error('Order not found');
+  }
 
   if (order.shiprocket_order_id) {
+    logger.warn(`[Shipment] Order ${orderId} already has shipment: ${order.shiprocket_order_id}`);
     return order;
   }
 
@@ -64,7 +69,12 @@ async function createShipmentInternal(orderId) {
     weight: 500
   };
 
+  logger.info(`[Shipment] Payload ready. Calling Shiprocket API...`, payload);
+  
   const resp = await shiprocket.createShipment(payload);
+  
+  logger.info(`[Shipment] Shiprocket API responded:`, resp);
+  
   const data = resp?.data || resp;
 
   const shiprocketOrderId = data?.order_id || null;
@@ -79,6 +89,8 @@ async function createShipmentInternal(orderId) {
     WHERE id=$6 RETURNING *
   `;
 
+  logger.info(`[Shipment] Updating database for order ${orderId}...`);
+  
   const updated = await db.query(updateSql, [
     shiprocketOrderId,
     awb,
@@ -88,6 +100,8 @@ async function createShipmentInternal(orderId) {
     order.id
   ]);
 
+  logger.info(`[Shipment] ✅ Created successfully:`, updated.rows[0]);
+  
   return updated.rows[0];
 }
 
@@ -110,21 +124,39 @@ async function createShipmentForOrder(req, res) {
   }
 
   try {
-    const order = await createShipmentInternal(orderId);
+    logger.info(`Creating shipment for order ${orderId}...`);
+    
+    // Timeout this operation after 12 seconds to prevent hanging
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Shipment creation timeout')), 12000)
+    );
+    
+    const shipmentPromise = createShipmentInternal(orderId);
+    const order = await Promise.race([shipmentPromise, timeoutPromise]);
 
+    logger.info(`✅ Shipment created for order ${orderId}:`, order.shiprocket_order_id);
+    
     return res.status(200).json({
       status: "ok",
       message: "Shipment processed",
       order
     });
   } catch (err) {
-    logger.error("createShipmentForOrder failed:", err.message || err);
+    logger.error("❌ createShipmentForOrder failed:", err.message || err);
 
     // if the underlying error was missing credentials, translate it to 422
     if (err.message && err.message.includes('SHIPROCKET_EMAIL')) {
       return res.status(422).json({
         status: "error",
         message: "Shiprocket credentials not configured"
+      });
+    }
+
+    // timeout error
+    if (err.message && err.message.includes('timeout')) {
+      return res.status(504).json({
+        status: "error",
+        message: "Shipment creation timed out. Shiprocket may be unreachable."
       });
     }
 
