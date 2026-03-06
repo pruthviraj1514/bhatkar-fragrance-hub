@@ -48,19 +48,27 @@ async function createShipmentInternal(orderId) {
     channel_id: process.env.SHIPROCKET_CHANNEL_ID || 1,
     comment: order.notes || 'Order shipment',
 
+    // Billing Information
     billing_customer_name: customerName,
+    billing_last_name: 'Bhatkar',
     billing_address: 'Dewale, Haldi',
     billing_city: 'Kolhapur',
     billing_pincode: '416001',
     billing_state: 'Maharashtra',
+    billing_country: 'IN',
+    billing_email: order.customer_email || 'noreply@bhatkar.com',
     billing_phone: phone,
 
+    // Shipping Information
     shipping_is_billing: false,
     shipping_customer_name: 'Bhatkar',
+    shipping_last_name: 'Fragrance',
     shipping_address: 'Anderi',
     shipping_city: 'Mumbai',
     shipping_pincode: '411035',
     shipping_state: 'Maharashtra',
+    shipping_country: 'IN',
+    shipping_email: order.customer_email || 'noreply@bhatkar.com',
     shipping_phone: phone,
 
     order_items: [
