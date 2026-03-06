@@ -425,6 +425,8 @@ async function fixOrdersTableForMultiItemOrders(db, loggerUtil) {
 async function addShippingFields(db, loggerUtil) {
   const shippingColumns = [
     { name: 'phone', type: 'VARCHAR(20)' },
+    { name: 'first_name', type: 'VARCHAR(100)' },
+    { name: 'last_name', type: 'VARCHAR(100)' },
     { name: 'shipping_address', type: 'TEXT' },
     { name: 'shipping_city', type: 'VARCHAR(100)' },
     { name: 'shipping_pincode', type: 'VARCHAR(10)' },

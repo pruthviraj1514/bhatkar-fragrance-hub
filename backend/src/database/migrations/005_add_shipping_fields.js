@@ -1,11 +1,13 @@
 /**
  * Migration: add shipping fields to orders table
- * Adds: phone, shipping_address, shipping_city, shipping_pincode, shipping_state, shipping_phone
+ * Adds: phone, first_name, last_name, shipping_address, shipping_city, shipping_pincode, shipping_state, shipping_phone
  */
 module.exports = {
   up: async (db) => {
     const alter = `ALTER TABLE orders
       ADD COLUMN IF NOT EXISTS phone VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
       ADD COLUMN IF NOT EXISTS shipping_address TEXT,
       ADD COLUMN IF NOT EXISTS shipping_city VARCHAR(100),
       ADD COLUMN IF NOT EXISTS shipping_pincode VARCHAR(10),
@@ -24,6 +26,8 @@ module.exports = {
   down: async (db) => {
     const alter = `ALTER TABLE orders
       DROP COLUMN IF EXISTS phone,
+      DROP COLUMN IF EXISTS first_name,
+      DROP COLUMN IF EXISTS last_name,
       DROP COLUMN IF EXISTS shipping_address,
       DROP COLUMN IF EXISTS shipping_city,
       DROP COLUMN IF EXISTS shipping_pincode,
