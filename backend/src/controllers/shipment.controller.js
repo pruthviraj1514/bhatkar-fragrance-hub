@@ -45,7 +45,6 @@ async function createShipmentInternal(orderId) {
     order_id: `order_${order.id}`,
     order_date: new Date().toISOString(),
     pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Default',
-    channel_id: process.env.SHIPROCKET_CHANNEL_ID || 1,
     comment: order.notes || 'Order shipment',
 
     // Billing Information
