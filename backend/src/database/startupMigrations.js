@@ -43,6 +43,9 @@ async function runStartupMigrations(db, loggerUtil = logger) {
     await createOrderItemsTable(db, loggerUtil);
     await fixOrdersTableForMultiItemOrders(db, loggerUtil);
 
+    // Migration 8: Add Shiprocket shipping fields to orders table
+    await addShippingFields(db, loggerUtil);
+
     loggerUtil.info('✅ All startup migrations completed successfully');
     return { success: true, message: 'Migrations complete' };
 
@@ -415,6 +418,46 @@ async function fixOrdersTableForMultiItemOrders(db, loggerUtil) {
   }
 }
 
+/**
+ * Add shipping fields to orders table for Shiprocket integration
+ */
+async function addShippingFields(db, loggerUtil) {
+  const shippingColumns = [
+    { name: 'phone', type: 'VARCHAR(20)' },
+    { name: 'shipping_address', type: 'TEXT' },
+    { name: 'shipping_city', type: 'VARCHAR(100)' },
+    { name: 'shipping_pincode', type: 'VARCHAR(10)' },
+    { name: 'shipping_state', type: 'VARCHAR(100)' },
+    { name: 'shipping_phone', type: 'VARCHAR(20)' },
+    { name: 'shiprocket_order_id', type: 'VARCHAR(255)' },
+    { name: 'awb_code', type: 'VARCHAR(255)' },
+    { name: 'courier_name', type: 'VARCHAR(255)' },
+    { name: 'tracking_url', type: 'TEXT' },
+    { name: 'shipment_status', type: 'VARCHAR(100)' }
+  ];
+
+  try {
+    for (const col of shippingColumns) {
+      const { rows: columns } = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'orders' 
+        AND table_schema = 'public'
+        AND column_name = $1
+      `, [col.name]);
+
+      if (columns.length === 0) {
+        loggerUtil.info(`  Adding ${col.name} column to orders table...`);
+        await db.query(`ALTER TABLE orders ADD COLUMN ${col.name} ${col.type}`);
+        loggerUtil.info(`  ✅ Added ${col.name} column`);
+      }
+    }
+
+  } catch (error) {
+    loggerUtil.warn('  ⚠️ Could not add shipping fields to orders table:', error.message);
+  }
+}
+
 module.exports = {
   runStartupMigrations,
   addIsActiveColumn,
@@ -424,5 +467,6 @@ module.exports = {
   addUsersTableColumns,
   createIndexes,
   createOrderItemsTable,
-  fixOrdersTableForMultiItemOrders
+  fixOrdersTableForMultiItemOrders,
+  addShippingFields
 };
