@@ -49,18 +49,18 @@ async function createShipmentInternal(orderId) {
     comment: order.notes || 'Order shipment',
 
     billing_customer_name: customerName,
-    billing_address: order.shipping_address || order.notes || 'N/A',
-    billing_city: order.shipping_city || order.notes || 'N/A',
-    billing_pincode: (order.shipping_pincode || order.notes || '000000').replace(/\D/g, '') || '000000',
-    billing_state: order.shipping_state || 'N/A',
+    billing_address: 'Dewale, Haldi',
+    billing_city: 'Kolhapur',
+    billing_pincode: '416001',
+    billing_state: 'Maharashtra',
     billing_phone: phone,
 
-    shipping_is_billing: true,
-    shipping_customer_name: customerName,
-    shipping_address: order.shipping_address || order.notes || 'N/A',
-    shipping_city: order.shipping_city || order.notes || 'N/A',
-    shipping_pincode: (order.shipping_pincode || order.notes || '000000').replace(/\D/g, '') || '000000',
-    shipping_state: order.shipping_state || 'N/A',
+    shipping_is_billing: false,
+    shipping_customer_name: 'Bhatkar',
+    shipping_address: 'Anderi',
+    shipping_city: 'Mumbai',
+    shipping_pincode: '411035',
+    shipping_state: 'Maharashtra',
     shipping_phone: phone,
 
     order_items: [
