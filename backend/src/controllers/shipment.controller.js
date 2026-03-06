@@ -29,6 +29,10 @@ async function createShipmentInternal(orderId) {
 
   const customerName = order.customer_name || order.customer_email || 'Customer';
   const itemName = order.product_name || `product-${order.product_id || ''}`;
+  
+  // Use phone from order, or default to a valid format
+  // Shiprocket requires valid phone format (10 digits for India)
+  const phone = (order.phone || order.shipping_phone || '9999999999').replace(/\D/g, '').slice(-10) || '9999999999';
 
   const payload = {
     order_id: `order_${order.id}`,
@@ -38,19 +42,19 @@ async function createShipmentInternal(orderId) {
     comment: order.notes || 'Order shipment',
 
     billing_customer_name: customerName,
-    billing_address: order.notes || 'N/A',
-    billing_city: order.notes || 'N/A',
-    billing_pincode: order.notes || '000000',
-    billing_state: 'N/A',
-    billing_phone: '0000000000',
+    billing_address: order.shipping_address || order.notes || 'N/A',
+    billing_city: order.shipping_city || order.notes || 'N/A',
+    billing_pincode: (order.shipping_pincode || order.notes || '000000').replace(/\D/g, '') || '000000',
+    billing_state: order.shipping_state || 'N/A',
+    billing_phone: phone,
 
     shipping_is_billing: true,
     shipping_customer_name: customerName,
-    shipping_address: order.notes || 'N/A',
-    shipping_city: order.notes || 'N/A',
-    shipping_pincode: order.notes || '000000',
-    shipping_state: 'N/A',
-    shipping_phone: '0000000000',
+    shipping_address: order.shipping_address || order.notes || 'N/A',
+    shipping_city: order.shipping_city || order.notes || 'N/A',
+    shipping_pincode: (order.shipping_pincode || order.notes || '000000').replace(/\D/g, '') || '000000',
+    shipping_state: order.shipping_state || 'N/A',
+    shipping_phone: phone,
 
     order_items: [
       {

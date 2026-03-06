@@ -96,7 +96,19 @@ export default function AdminShipments() {
       toast.success(`Shipment ${updated.shiprocket_order_id || ''}`);
     } catch (err: any) {
       console.error("❌ Failed to create shipment:", err);
-      toast.error(err.response?.data?.message || "Failed to create shipment");
+      
+      let errorMsg = "Failed to create shipment";
+      
+      // Try to extract detailed error message from Shiprocket
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.response?.data?.errors) {
+        errorMsg = err.response.data.errors[0] || errorMsg;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      toast.error(errorMsg);
     } finally {
       setUpdateLoading(null);
     }
