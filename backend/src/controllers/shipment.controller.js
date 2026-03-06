@@ -36,8 +36,8 @@ async function createShipmentInternal(orderId) {
   
   // Fetch phone number - priority: order.phone → order.user_phone → fallback to valid format
   // Shiprocket requires valid phone format (10 digits for India)
-  let phone = order.phone || order.shipping_phone || order.user_phone || '9999999999';
-  phone = phone.replace(/\D/g, '').slice(-10) || '9999999999';
+  let phone = order.phone || order.shipping_phone || order.user_phone || '9359687277';
+  phone = phone.replace(/\D/g, '').slice(-10) || '9359687277';
 
   logger.info(`[Shipment] Using phone ${phone.slice(-4)} for order ${orderId}`);
 
