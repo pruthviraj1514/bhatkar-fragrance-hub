@@ -81,10 +81,14 @@ class PaymentService {
       });
 
       // 4. Save order in database
+      // First, fetch user phone for shipment info
+      const userResult = await conn.query('SELECT phone FROM users WHERE id = $1', [userId]);
+      const userPhone = userResult.rows[0]?.phone || null;
+
       const orderInsertResult = await conn.query(
-        `INSERT INTO orders (user_id, total_amount, razorpay_order_id, status, created_at)
-         VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
-        [userId, finalAmount, razorpayOrder.id, 'PENDING']
+        `INSERT INTO orders (user_id, total_amount, razorpay_order_id, status, phone, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *`,
+        [userId, finalAmount, razorpayOrder.id, 'PENDING', userPhone]
       );
 
       const orderId = orderInsertResult.rows[0].id;

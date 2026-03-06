@@ -190,6 +190,7 @@ async function addUsersTableColumns(db, loggerUtil) {
   const columnsToAdd = [
     { name: 'name', type: 'VARCHAR(100)' },
     { name: 'full_name', type: 'VARCHAR(100)' },
+    { name: 'phone', type: 'VARCHAR(20)' },
     { name: 'role', type: "VARCHAR(20) DEFAULT 'customer'" },
     { name: 'is_verified', type: 'BOOLEAN DEFAULT FALSE' }
   ];

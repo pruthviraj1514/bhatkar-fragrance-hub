@@ -4,7 +4,11 @@ const { logger } = require('../utils/logger');
 
 // Helper to fetch order with user and product info
 async function fetchOrder(orderId) {
-  const q = `SELECT o.*, u.email as customer_email, CONCAT(u.firstname, ' ', u.lastname) as customer_name, p.name as product_name
+  const q = `SELECT o.*, 
+    u.email as customer_email, 
+    CONCAT(u.firstname, ' ', u.lastname) as customer_name,
+    u.phone as user_phone,
+    p.name as product_name
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
     LEFT JOIN products p ON o.product_id = p.id
@@ -30,9 +34,12 @@ async function createShipmentInternal(orderId) {
   const customerName = order.customer_name || order.customer_email || 'Customer';
   const itemName = order.product_name || `product-${order.product_id || ''}`;
   
-  // Use phone from order, or default to a valid format
+  // Fetch phone number - priority: order.phone → order.user_phone → fallback to valid format
   // Shiprocket requires valid phone format (10 digits for India)
-  const phone = (order.phone || order.shipping_phone || '9999999999').replace(/\D/g, '').slice(-10) || '9999999999';
+  let phone = order.phone || order.shipping_phone || order.user_phone || '9999999999';
+  phone = phone.replace(/\D/g, '').slice(-10) || '9999999999';
+
+  logger.info(`[Shipment] Using phone ${phone.slice(-4)} for order ${orderId}`);
 
   const payload = {
     order_id: `order_${order.id}`,
