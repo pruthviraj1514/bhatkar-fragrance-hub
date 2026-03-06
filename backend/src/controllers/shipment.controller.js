@@ -41,31 +41,41 @@ async function createShipmentInternal(orderId) {
 
   logger.info(`[Shipment] Using phone ${phone.slice(-4)} for order ${orderId}`);
 
+  // Extract customer shipping data from checkout form or use defaults
+  const shippingCustomerName = order.first_name || 'Customer';
+  const shippingLastName = order.last_name || 'Order';
+  const shippingAddress = order.shipping_address || 'Address not provided';
+  const shippingCity = order.shipping_city || 'Mumbai';
+  const shippingPincode = order.shipping_pincode || '400001';
+  const shippingState = order.shipping_state || 'Maharashtra';
+
+  logger.info(`[Shipment] Using customer shipping info: ${shippingCustomerName} ${shippingLastName}, ${shippingAddress}, ${shippingCity}`);
+
   const payload = {
     order_id: `order_${order.id}`,
     order_date: new Date().toISOString(),
     pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Default',
     comment: order.notes || 'Order shipment',
 
-    // Billing Information
-    billing_customer_name: customerName,
-    billing_last_name: 'Bhatkar',
-    billing_address: 'Dewale, Haldi',
-    billing_city: 'Kolhapur',
-    billing_pincode: '416001',
-    billing_state: 'Maharashtra',
+    // Billing Information (use customer name but keep company billing address)
+    billing_customer_name: shippingCustomerName,
+    billing_last_name: shippingLastName,
+    billing_address: shippingAddress,
+    billing_city: shippingCity,
+    billing_pincode: shippingPincode,
+    billing_state: shippingState,
     billing_country: 'IN',
     billing_email: order.customer_email || 'noreply@bhatkar.com',
     billing_phone: phone,
 
-    // Shipping Information
-    shipping_is_billing: false,
-    shipping_customer_name: 'Bhatkar',
-    shipping_last_name: 'Fragrance',
-    shipping_address: 'Anderi',
-    shipping_city: 'Mumbai',
-    shipping_pincode: '411035',
-    shipping_state: 'Maharashtra',
+    // Shipping Information (use customer checkout data)
+    shipping_is_billing: true,
+    shipping_customer_name: shippingCustomerName,
+    shipping_last_name: shippingLastName,
+    shipping_address: shippingAddress,
+    shipping_city: shippingCity,
+    shipping_pincode: shippingPincode,
+    shipping_state: shippingState,
     shipping_country: 'IN',
     shipping_email: order.customer_email || 'noreply@bhatkar.com',
     shipping_phone: phone,

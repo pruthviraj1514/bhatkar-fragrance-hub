@@ -17,8 +17,9 @@ class PaymentService {
    * - Calculate total amount
    * - Create Razorpay order
    * - Save order in database with PENDING status
+   * - Store shipping address from checkout form if provided
    */
-  async createOrder(userId, items, contact = null) {
+  async createOrder(userId, items, contact = null, shippingData = null) {
     const conn = await db.getConnection();
 
     try {
@@ -83,12 +84,25 @@ class PaymentService {
       // 4. Save order in database
       // First, fetch user phone for shipment info
       const userResult = await conn.query('SELECT phone FROM users WHERE id = $1', [userId]);
-      const userPhone = userResult.rows[0]?.phone || null;
+      const userPhone = userResult.rows[0]?.phone || contact || null;
+
+      // Extract shipping details from shippingData or use defaults
+      const firstName = shippingData?.firstName || null;
+      const lastName = shippingData?.lastName || null;
+      const shippingAddress = shippingData?.address || null;
+      const shippingCity = shippingData?.city || null;
+      const shippingState = shippingData?.state || null;
+      const shippingPincode = shippingData?.zipCode || null;
+      const shippingPhone = shippingData?.phone || contact || userPhone;
 
       const orderInsertResult = await conn.query(
-        `INSERT INTO orders (user_id, total_amount, razorpay_order_id, status, phone, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *`,
-        [userId, finalAmount, razorpayOrder.id, 'PENDING', userPhone]
+        `INSERT INTO orders (user_id, total_amount, razorpay_order_id, status, phone, 
+              first_name, last_name, shipping_address, shipping_city, shipping_state, 
+              shipping_pincode, shipping_phone, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW()) RETURNING *`,
+        [userId, finalAmount, razorpayOrder.id, 'PENDING', userPhone,
+         firstName, lastName, shippingAddress, shippingCity, shippingState,
+         shippingPincode, shippingPhone]
       );
 
       const orderId = orderInsertResult.rows[0].id;

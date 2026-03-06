@@ -17,7 +17,7 @@ const { logger } = require('../utils/logger');
  */
 exports.createOrder = async (req, res) => {
   try {
-    const { items, contact = null } = req.body;
+    const { items, contact = null, shippingData = null } = req.body;
 
     // Require userId from authenticated middleware (auth)
     const userId = req.user?.id;
@@ -33,8 +33,8 @@ exports.createOrder = async (req, res) => {
 
     console.log('📋 Processing multi-item order request:', JSON.stringify(items));
 
-    // Create order
-    const result = await paymentService.createOrder(userId, items, contact);
+    // Create order with shipping data from checkout form
+    const result = await paymentService.createOrder(userId, items, contact, shippingData);
 
     console.log('✅ Order created successfully:', {
       orderId: result.orderId,

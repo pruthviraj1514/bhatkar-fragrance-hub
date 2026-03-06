@@ -17,6 +17,17 @@ interface CheckoutPaymentProps {
   items: Array<{ productId: number; quantity: number; price: number }>;
   totalAmount: number;
   prefillContact?: string;
+  shippingData?: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
   onSuccess?: (response: any) => void;
   onError?: (error: any) => void;
   buttonText?: string;
@@ -27,6 +38,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
   items,
   totalAmount,
   prefillContact,
+  shippingData,
   onSuccess,
   onError,
   buttonText = 'Pay Now',
@@ -34,6 +46,19 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Convert phone number from 12 digits to 10 digits
+   * Input: "+91 93596 87277" or "9359687277" or "+919359687277"
+   * Output: "9359687277"
+   */
+  const formatPhoneFor10Digits = (phone: string): string => {
+    if (!phone) return '';
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+    // Take last 10 digits (handles +91 prefix scenarios)
+    return cleaned.slice(-10);
+  };
 
   /**
    * Load Razorpay script from CDN
@@ -90,13 +115,34 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
       console.log(`🔄 Creating order for ${items.length} items...`);
       console.log(`📡 API Base URL: ${import.meta.env.VITE_API_BASE_URL}`);
 
-      const orderResponse = await api.post('/payment/create-order', {
+      // Convert phone to 10 digits for shipment APIs
+      const formattedPhone = contactToUse ? formatPhoneFor10Digits(contactToUse) : null;
+
+      // Prepare payload with shipping data
+      const orderPayload: any = {
         items: items.map(item => ({
           productId: item.productId,
           quantity: item.quantity
         })),
-        contact: contactToUse || null
-      });
+        contact: formattedPhone || null
+      };
+
+      // Include full shipping data if available
+      if (shippingData) {
+        orderPayload.shippingData = {
+          firstName: shippingData.firstName,
+          lastName: shippingData.lastName,
+          email: shippingData.email,
+          phone: formattedPhone || null,
+          address: shippingData.address,
+          city: shippingData.city,
+          state: shippingData.state,
+          zipCode: shippingData.zipCode,
+          country: shippingData.country
+        };
+      }
+
+      const orderResponse = await api.post('/payment/create-order', orderPayload);
 
       console.log('📨 Order creation response:', orderResponse.status, orderResponse.data);
 
@@ -112,17 +158,8 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({
       // 3. Open Razorpay checkout
       console.log('🎯 Opening Razorpay Checkout modal...');
       
-      // Validate and prepare contact
-      let validContact = '';
-      if (contactToUse && contactToUse.trim()) {
-        // Remove any non-numeric characters
-        validContact = contactToUse.replace(/\D/g, '');
-        // Ensure it's at least 10 digits (Indian phone number)
-        if (validContact.length < 10) {
-          console.warn('⚠️ Contact too short, clearing it for Razorpay');
-          validContact = '';
-        }
-      }
+      // Use the already formatted phone (10 digits or empty)
+      const validContact = formattedPhone || '';
       
       console.log('📋 Razorpay options:', {
         key: razorpayKeyId ? 'SET' : 'MISSING',
