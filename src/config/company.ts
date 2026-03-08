@@ -3,7 +3,7 @@
  * @description Centralized company information configuration
  * Use this file for all company details across the application
  * Single source of truth for branding consistency
- */ake 
+ */
 
 export const COMPANY_INFO = {
   name: "Bhatkar & Co",

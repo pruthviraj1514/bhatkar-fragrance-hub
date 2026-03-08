@@ -186,15 +186,14 @@ export default function Checkout() {
                     <div>
                       <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                       <Input
-                        id="email" <span className="text-xs text-muted-foreground">(Do payment though this number only)</span></Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        placeholder="98765 43210"
-                        value={formData.phone}
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={formData.email}
                         onChange={handleInputChange}
-                        maxLength={10
+                        className="text-sm sm:text-base"
+                        required
                       />
                     </div>
                     <div>
