@@ -55,6 +55,17 @@ export default function Checkout() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // Restrict phone number to 10 digits only
+    if (name === "phone") {
+      const phoneOnly = value.replace(/\D/g, "").slice(0, 10);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: phoneOnly,
+      }));
+      return;
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -175,25 +186,27 @@ export default function Checkout() {
                     <div>
                       <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                       <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="john@example.com"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="text-sm sm:text-base"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone" className="text-sm sm:text-base">Phone Number</Label>
+                        id="email" <span className="text-xs text-muted-foreground">(Do payment though this number only)</span></Label>
                       <Input
                         id="phone"
                         name="phone"
                         type="tel"
-                        placeholder="+91 98765 43210"
+                        placeholder="98765 43210"
                         value={formData.phone}
                         onChange={handleInputChange}
+                        maxLength={10
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone" className="text-sm sm:text-base">Phone Number <span className="text-xs text-muted-foreground">(Do payment though this number only)</span></Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="9876543210"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        maxLength={10}
                         className="text-sm sm:text-base"
                         required
                       />
